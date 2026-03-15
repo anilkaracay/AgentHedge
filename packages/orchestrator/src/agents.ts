@@ -11,6 +11,7 @@ import {
   getIndexPrice, getCandles, getRecentTrades,
   getTotalValue, getTokenBalances, getGasPrice, getPortfolioOverview,
   estimateTradeCosts, calculateMinProfitableSize, formatProfitReport,
+  isDemoMode, getDemoPortfolio, updateDemoBalance, maybeInjectVolatilitySpike,
   TRACKED_TOKENS, USDC_XLAYER,
   createX402Middleware, callPaidEndpoint,
 } from '@agenthedge/shared';
@@ -53,7 +54,9 @@ async function startScout(): Promise<void> {
   async function scan() {
     for (const token of TRACKED_TOKENS) {
       try {
-        const scan = await scanAllVenues(token);
+        let scan = await scanAllVenues(token);
+        // Demo mode: occasionally inject volatility spikes for realistic demo
+        scan = maybeInjectVolatilitySpike(scan);
         const now = new Date();
 
         latestSignal = {
@@ -158,6 +161,27 @@ async function startAnalyst(): Promise<void> {
 
       logInfo('analyst', `${signal.token}: ${action} | net $${costs.netProfit.toFixed(3)} (${costs.netProfitPercent.toFixed(2)}%) | transfer: ${costs.transferNote}`);
       eventBus.emitDashboardEvent({ type: 'analysis_complete', data: latestRecommendation, timestamp: latestRecommendation.timestamp });
+
+      // Demo mode: simulate trade execution on EXECUTE
+      if (action === 'EXECUTE' && isDemoMode()) {
+        const tradeSize = parseFloat(process.env.DEMO_TRADE_SIZE ?? '10000');
+        const okbAmount = tradeSize / freshScan.cheapest.price;
+        logInfo('executor', `[DEMO] BUY ${okbAmount.toFixed(2)} OKB @ ${freshScan.cheapest.venue} $${freshScan.cheapest.price.toFixed(2)}`);
+        logInfo('executor', `[DEMO] SELL ${okbAmount.toFixed(2)} OKB @ ${freshScan.mostExpensive.venue} $${freshScan.mostExpensive.price.toFixed(2)}`);
+        updateDemoBalance(freshScan.cheapest.venue, freshScan.mostExpensive.venue, okbAmount, tradeSize, costs.netProfit);
+        eventBus.emitDashboardEvent({
+          type: 'trade_executed',
+          data: {
+            id: uuidv4(), recommendationId: latestRecommendation.id, status: 'EXECUTED',
+            fromToken: signal.token, toToken: 'USDC', amountIn: okbAmount.toFixed(4),
+            amountOut: (tradeSize + costs.netProfit).toFixed(2),
+            realizedProfit: costs.netProfit, timestamp: new Date().toISOString(),
+          },
+          timestamp: new Date().toISOString(),
+        });
+        const dp = getDemoPortfolio();
+        logInfo('executor', `[DEMO] Trade complete. Session P&L: $${dp.sessionPnL.toFixed(2)} (${dp.tradeCount} trades, ${dp.profitableCount} profitable)`);
+      }
     } catch (err) {
       logError('analyst', 'Analysis failed', err);
     }
@@ -190,29 +214,44 @@ async function startTreasury(): Promise<void> {
 
   async function refreshPortfolio() {
     try {
-      // OnchainOS Balance API — real portfolio data
-      const totalResult = await getTotalValue('196', wallet.address);
-      const balances = await getTokenBalances('196', wallet.address);
+      if (isDemoMode()) {
+        // Demo mode: show simulated $800K portfolio
+        const dp = getDemoPortfolio();
+        portfolio = {
+          totalValueUSD: dp.totalCapital,
+          tokenBalances: [
+            { token: 'OKB', balance: dp.totalOKB.toFixed(2), valueUSD: dp.totalOKB * 96 },
+            { token: 'USDT', balance: dp.totalUSDT.toFixed(2), valueUSD: dp.totalUSDT },
+          ],
+          dailyPnL: dp.sessionPnL,
+          dailyPnLPercent: dp.totalCapital > 0 ? (dp.sessionPnL / dp.totalCapital) * 100 : 0,
+          circuitBreakerActive: false,
+        };
+        logInfo('treasury', `[DEMO] Portfolio: $${dp.totalCapital.toFixed(0)} | Session P&L: $${dp.sessionPnL.toFixed(2)} | ${dp.tradeCount} trades`);
+      } else {
+        // Real mode: OnchainOS Balance API
+        const totalResult = await getTotalValue('196', wallet.address);
+        const balances = await getTokenBalances('196', wallet.address);
 
-      const tokenBalances = balances.map(b => ({
-        token: b.symbol,
-        balance: b.balance,
-        valueUSD: parseFloat(b.balance) * parseFloat(b.tokenPrice),
-      }));
+        const tokenBalances = balances.map(b => ({
+          token: b.symbol,
+          balance: b.balance,
+          valueUSD: parseFloat(b.balance) * parseFloat(b.tokenPrice),
+        }));
 
-      // OnchainOS Portfolio API — PnL analytics
-      let pnlData = { realizedPnlUsd: '0' };
-      try { pnlData = await getPortfolioOverview('196', wallet.address); } catch { /* skip */ }
+        let pnlData = { realizedPnlUsd: '0' };
+        try { pnlData = await getPortfolioOverview('196', wallet.address); } catch { /* skip */ }
 
-      portfolio = {
-        totalValueUSD: parseFloat(totalResult.totalValue.toFixed(4)),
-        tokenBalances,
-        dailyPnL: parseFloat(pnlData.realizedPnlUsd || '0'),
-        dailyPnLPercent: 0,
-        circuitBreakerActive: false,
-      };
+        portfolio = {
+          totalValueUSD: parseFloat(totalResult.totalValue.toFixed(4)),
+          tokenBalances,
+          dailyPnL: parseFloat(pnlData.realizedPnlUsd || '0'),
+          dailyPnLPercent: 0,
+          circuitBreakerActive: false,
+        };
 
-      logInfo('treasury', `Portfolio: $${totalResult.totalValue.toFixed(2)} (${balances.length} tokens via OnchainOS Balance API)`);
+        logInfo('treasury', `Portfolio: $${totalResult.totalValue.toFixed(2)} (${balances.length} tokens via OnchainOS Balance API)`);
+      }
       eventBus.emitDashboardEvent({ type: 'portfolio_update', data: portfolio, timestamp: new Date().toISOString() });
     } catch (err) {
       logError('treasury', 'Portfolio refresh failed', err);

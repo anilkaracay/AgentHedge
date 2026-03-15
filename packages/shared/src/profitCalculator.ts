@@ -117,13 +117,15 @@ export function estimateTradeCosts(
   const sellGas = sellV.venueType === 'dex' ? FEE_STRUCTURE.xlayerGas : 0;
 
   // Context-dependent transfer fee
-  const transferFee = getTransferFee(buyV.venue, sellV.venue);
-  const isOKXXLayer = transferFee === 0 && buyV.venue !== sellV.venue;
-  const transferNote = buyV.venue === sellV.venue
-    ? 'same venue'
-    : isOKXXLayer
-      ? 'OKX <> X Layer: $0 (internal transfer)'
-      : `${buyV.venue} <> ${sellV.venue}: $${transferFee.toFixed(2)}`;
+  // DEMO MODE: capital pre-positioned on all venues, zero transfer cost
+  const transferFee = DEMO ? 0 : getTransferFee(buyV.venue, sellV.venue);
+  const transferNote = DEMO
+    ? 'Capital pre-positioned (no transfer needed)'
+    : buyV.venue === sellV.venue
+      ? 'same venue'
+      : transferFee === 0 && buyV.venue !== sellV.venue
+        ? 'OKX <> X Layer: $0 (internal transfer)'
+        : `${buyV.venue} <> ${sellV.venue}: $${transferFee.toFixed(2)}`;
 
   const scoutFee = FEE_STRUCTURE.scoutFee;
   const analystFee = FEE_STRUCTURE.analystFee;

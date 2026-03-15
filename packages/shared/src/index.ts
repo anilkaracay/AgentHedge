@@ -38,3 +38,5 @@ export { estimateTradeCosts, calculateMinProfitableSize, getCostBreakdown, forma
 export type { TradeCosts, CostBreakdown, TradeSize } from './profitCalculator.js';
 export { placeCEXOrder, getCEXBalance, getCEXOrderStatus } from './cexTrading.js';
 export type { CEXOrderParams, CEXOrderResult } from './cexTrading.js';
+export { isDemoMode, getDemoPortfolio, updateDemoBalance, maybeInjectVolatilitySpike } from './demoMode.js';
+export type { VenueBalance, DemoPortfolio } from './demoMode.js';
