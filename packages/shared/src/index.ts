@@ -26,3 +26,6 @@ export type {
   TokenBalance,
   TotalValueResponse,
 } from './onchainOS.js';
+export { createX402Middleware } from './x402Server.js';
+export type { X402RouteConfig } from './x402Server.js';
+export { callPaidEndpoint } from './x402Client.js';
