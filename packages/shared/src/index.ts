@@ -29,3 +29,10 @@ export type {
 export { createX402Middleware } from './x402Server.js';
 export type { X402RouteConfig } from './x402Server.js';
 export { callPaidEndpoint } from './x402Client.js';
+export {
+  getRegistryContract,
+  registerAgent,
+  getAgent,
+  getAllAgents,
+} from './registry.js';
+export type { OnChainAgent } from './registry.js';
