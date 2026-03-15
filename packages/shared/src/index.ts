@@ -5,26 +5,21 @@ export { eventBus } from './eventBus.js';
 export {
   getOKXHeaders,
   onchainOSGet,
-  getTokenPrice,
-  getRecentTrades,
-  getCandles,
   getSwapQuote,
   getSwapApproval,
   getSwapCalldata,
-  getTokenBalances,
-  getTotalValue,
+  getPrice,
+  getMultiChainPrices,
 } from './onchainOS.js';
 export type {
-  PriceInfoResponse,
-  CandleData,
   SwapQuoteParams,
   SwapQuoteResponse,
+  QuoteTokenInfo,
   ApproveParams,
   ApproveResponse,
   SwapParams,
   SwapResponse,
-  TokenBalance,
-  TotalValueResponse,
+  PriceResult,
 } from './onchainOS.js';
 export { createX402Middleware } from './x402Server.js';
 export type { X402RouteConfig } from './x402Server.js';

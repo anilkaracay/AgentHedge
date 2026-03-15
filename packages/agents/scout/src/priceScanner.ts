@@ -1,7 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import {
-  getTokenPrice,
-  getRecentTrades,
+  getPrice,
   config,
   logInfo,
   logError,
@@ -9,19 +8,25 @@ import {
 import type { OpportunitySignal } from '@agenthedge/shared';
 
 const NATIVE_TOKEN = config.NATIVE_TOKEN_ADDRESS;
+
+// USDC addresses per chain
+const USDC_XLAYER = config.USDC_ADDRESS;
+const USDC_ETHEREUM = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
+
 const XLAYER_CHAIN = config.XLAYER_CHAIN_INDEX;
 const ETH_MAINNET_CHAIN = config.ETH_MAINNET_CHAIN_INDEX;
 
 export async function scanForOpportunity(): Promise<OpportunitySignal | null> {
   try {
-    // Fetch DEX price on X Layer and CEX reference from Ethereum mainnet
-    const [dexData, cexData] = await Promise.all([
-      getTokenPrice(XLAYER_CHAIN, NATIVE_TOKEN),
-      getTokenPrice(ETH_MAINNET_CHAIN, NATIVE_TOKEN),
+    // Get price via aggregator/quote on both chains
+    // Quote: native token → USDC gives us the token price in USD
+    const [xlayerPrice, ethPrice] = await Promise.all([
+      getPrice(XLAYER_CHAIN, NATIVE_TOKEN, USDC_XLAYER),
+      getPrice(ETH_MAINNET_CHAIN, NATIVE_TOKEN, USDC_ETHEREUM),
     ]);
 
-    const dexPrice = parseFloat(dexData.lastPrice);
-    const cexPrice = parseFloat(cexData.lastPrice);
+    const dexPrice = xlayerPrice.price;
+    const cexPrice = ethPrice.price;
 
     if (cexPrice === 0) {
       logError('scout', 'CEX reference price is zero, skipping');
@@ -32,7 +37,7 @@ export async function scanForOpportunity(): Promise<OpportunitySignal | null> {
     const direction: OpportunitySignal['direction'] =
       dexPrice < cexPrice ? 'BUY_DEX' : 'SELL_DEX';
 
-    logInfo('scout', `Spread: ${(spreadPercent * 100).toFixed(4)}%`, {
+    logInfo('scout', `X Layer: $${dexPrice.toFixed(2)} | Ethereum: $${cexPrice.toFixed(2)} | Spread: ${(spreadPercent * 100).toFixed(4)}%`, {
       dexPrice,
       cexPrice,
       direction,
@@ -42,9 +47,6 @@ export async function scanForOpportunity(): Promise<OpportunitySignal | null> {
       return null;
     }
 
-    // Fetch 24h volume for confidence weighting
-    const volume24h = parseFloat(dexData.volume24h || '0');
-
     const now = new Date();
     const expiresAt = new Date(now.getTime() + 30_000);
 
@@ -52,13 +54,13 @@ export async function scanForOpportunity(): Promise<OpportunitySignal | null> {
       id: uuidv4(),
       tokenPair: 'ETH/USDC',
       fromToken: NATIVE_TOKEN,
-      toToken: config.USDC_ADDRESS,
+      toToken: USDC_XLAYER,
       cexPrice,
       dexPrice,
       spreadPercent: parseFloat((spreadPercent * 100).toFixed(4)),
       direction,
-      volume24h,
-      confidence: Math.min(1, spreadPercent / 0.01), // higher spread → higher confidence
+      volume24h: 0, // not available from aggregator API
+      confidence: Math.min(1, spreadPercent / 0.01),
       timestamp: now.toISOString(),
       expiresAt: expiresAt.toISOString(),
     };

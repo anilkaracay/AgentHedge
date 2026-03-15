@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import {
-  getTokenPrice,
+  getSwapQuote,
   config,
   logInfo,
   logError,
@@ -23,13 +23,28 @@ export async function analyzeSignal(
     return buildSkip(signal, 'Signal expired');
   }
 
-  // Re-validate current price
+  // Re-validate price via a fresh aggregator quote
   let currentDexPrice: number;
+  let priceImpactPct: number;
+  let gasFee: string;
   try {
-    const priceData = await getTokenPrice('196', signal.fromToken);
-    currentDexPrice = parseFloat(priceData.lastPrice);
+    const quote = await getSwapQuote({
+      chainIndex: config.XLAYER_CHAIN_INDEX,
+      fromTokenAddress: signal.fromToken,
+      toTokenAddress: signal.toToken,
+      amount: '1000000000000000', // 0.001 ETH
+      slippagePercent: '0.5',
+    });
+
+    const fromDec = parseInt(quote.fromToken?.decimal ?? '18');
+    const toDec = parseInt(quote.toToken?.decimal ?? '6');
+    const fromAmt = parseFloat(quote.fromTokenAmount) / Math.pow(10, fromDec);
+    const toAmt = parseFloat(quote.toTokenAmount) / Math.pow(10, toDec);
+    currentDexPrice = fromAmt > 0 ? toAmt / fromAmt : 0;
+    priceImpactPct = parseFloat(quote.priceImpactPercentage || '0');
+    gasFee = quote.estimateGasFee;
   } catch (err) {
-    logError('analyst', 'Failed to re-validate price', err);
+    logError('analyst', 'Failed to re-validate price via quote', err);
     return buildSkip(signal, 'Price re-validation failed');
   }
 
@@ -40,29 +55,25 @@ export async function analyzeSignal(
     return buildSkip(signal, `Price drifted ${(priceDrift * 100).toFixed(2)}% since signal`);
   }
 
-  // Calculate trade size — use MAX_TRADE_SIZE_USDC from config
+  // Calculate trade size
   const tradeAmountUSDC = config.MAX_TRADE_SIZE_USDC;
 
-  // Estimated slippage: tradeAmount / volume24h * 100, capped at 2%
-  const slippagePct = signal.volume24h > 0
-    ? Math.min(2, (tradeAmountUSDC / signal.volume24h) * 100)
-    : 2;
-
-  // Estimated price impact: simplified model
-  const priceImpactPct = signal.spreadPercent * 0.3;
+  // Use priceImpact directly from the quote (real on-chain data)
+  const slippagePct = Math.max(priceImpactPct, 0.1); // at least 0.1% for safety
 
   // Net profit calculation
   const grossProfit = (signal.spreadPercent / 100) * tradeAmountUSDC;
   const slippageCost = (slippagePct / 100) * tradeAmountUSDC;
-  const priceImpactCost = (priceImpactPct / 100) * tradeAmountUSDC;
-  const netProfit = grossProfit - slippageCost - priceImpactCost - AGENT_FEES_USDC;
+  const gasCostUSD = parseFloat(gasFee) * 0.000001; // rough gas→USD (near zero on X Layer)
+  const netProfit = grossProfit - slippageCost - gasCostUSD - AGENT_FEES_USDC;
 
   logInfo('analyst', 'Profitability analysis', {
     grossProfit: grossProfit.toFixed(4),
     slippageCost: slippageCost.toFixed(4),
-    priceImpactCost: priceImpactCost.toFixed(4),
+    gasCostUSD: gasCostUSD.toFixed(4),
     agentFees: AGENT_FEES_USDC,
     netProfit: netProfit.toFixed(4),
+    priceImpact: priceImpactPct,
     confidence: signal.confidence,
   });
 

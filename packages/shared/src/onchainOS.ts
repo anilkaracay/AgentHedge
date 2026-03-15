@@ -56,6 +56,7 @@ export async function onchainOSGet<T = unknown>(
       throw err;
     }
 
+    // Rate limit (50011) comes as 200 with error code in body
     if (response.status === 429 || response.status >= 500) {
       logError('onchainOS', `Retryable status ${response.status} on ${path}`);
       if (attempt < MAX_RETRIES) {
@@ -70,6 +71,14 @@ export async function onchainOSGet<T = unknown>(
     }
 
     const data = await response.json();
+
+    // Handle rate limit in response body
+    if (data.code === '50011' && attempt < MAX_RETRIES) {
+      logError('onchainOS', 'Rate limited, backing off');
+      await sleep(RETRY_BASE_MS * Math.pow(2, attempt));
+      continue;
+    }
+
     if (data.code !== '0') {
       throw new Error(`OnchainOS API error code ${data.code}: ${data.msg}`);
     }
@@ -84,28 +93,7 @@ function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// ── Parameter & Response Types ──
-
-export interface PriceInfoResponse {
-  lastPrice: string;
-  price24hAgo: string;
-  priceChange24h: string;
-  volume24h: string;
-  high24h: string;
-  low24h: string;
-  change5m: string;
-  change1h: string;
-  change4h: string;
-}
-
-export interface CandleData {
-  ts: string;
-  open: string;
-  high: string;
-  low: string;
-  close: string;
-  volume: string;
-}
+// ── Types ──
 
 export interface SwapQuoteParams {
   chainIndex: string;
@@ -115,11 +103,19 @@ export interface SwapQuoteParams {
   slippagePercent?: string;
 }
 
+export interface QuoteTokenInfo {
+  tokenContractAddress: string;
+  tokenSymbol: string;
+  decimal: string;
+}
+
 export interface SwapQuoteResponse {
   fromTokenAmount: string;
   toTokenAmount: string;
   estimateGasFee: string;
   priceImpactPercentage: string;
+  fromToken?: QuoteTokenInfo;
+  toToken?: QuoteTokenInfo;
   dexRouterList: { dexProtocol: { dexName: string; percent: string } }[];
 }
 
@@ -148,56 +144,16 @@ export interface SwapResponse {
   };
 }
 
-export interface TokenBalance {
-  token: string;
-  balance: string;
-  tokenPrice: string;
+export interface PriceResult {
+  price: number;       // price of fromToken in toToken units (human-readable)
+  chainIndex: string;
+  fromToken: string;
+  toToken: string;
+  priceImpact: number; // percentage
+  gasFee: string;
 }
 
-export interface TotalValueResponse {
-  totalValue: string;
-}
-
-// ── Market API Helpers ──
-
-export async function getTokenPrice(
-  chainIndex: string,
-  tokenAddress: string
-): Promise<PriceInfoResponse> {
-  const result = await onchainOSGet<PriceInfoResponse[]>(
-    '/api/v6/dex/market/price-info',
-    { chainIndex, tokenAddress }
-  );
-  return result.data[0];
-}
-
-export async function getRecentTrades(
-  chainIndex: string,
-  tokenAddress: string,
-  limit?: number
-): Promise<unknown[]> {
-  const params: Record<string, string> = { chainIndex, tokenAddress };
-  if (limit !== undefined) params.limit = String(limit);
-  const result = await onchainOSGet<unknown[]>(
-    '/api/v6/dex/market/trades',
-    params
-  );
-  return result.data;
-}
-
-export async function getCandles(
-  chainIndex: string,
-  tokenAddress: string,
-  bar: string
-): Promise<CandleData[]> {
-  const result = await onchainOSGet<CandleData[]>(
-    '/api/v6/dex/market/candles',
-    { chainIndex, tokenAddress, bar }
-  );
-  return result.data;
-}
-
-// ── Trade API Helpers ──
+// ── Trade API Helpers (WORKING) ──
 
 export async function getSwapQuote(
   params: SwapQuoteParams
@@ -250,26 +206,60 @@ export async function getSwapCalldata(
   return result.data[0];
 }
 
-// ── Wallet API Helpers ──
+// ── Price Oracle via Aggregator Quote ──
 
-export async function getTokenBalances(
+/**
+ * Get the price of a token by quoting a small swap.
+ * Returns price in toToken units (e.g., ETH price in USDC).
+ */
+export async function getPrice(
   chainIndex: string,
-  address: string
-): Promise<TokenBalance[]> {
-  const result = await onchainOSGet<TokenBalance[]>(
-    '/api/v6/wallet/asset/token-balances',
-    { chainIndex, address }
-  );
-  return result.data;
+  fromToken: string,
+  toToken: string,
+  amount: string = '1000000000000000' // 0.001 ETH default (small to minimize impact)
+): Promise<PriceResult> {
+  const quote = await getSwapQuote({
+    chainIndex,
+    fromTokenAddress: fromToken,
+    toTokenAddress: toToken,
+    amount,
+    slippagePercent: '0.5',
+  });
+
+  const fromDecimals = parseInt(quote.fromToken?.decimal ?? '18');
+  const toDecimals = parseInt(quote.toToken?.decimal ?? '6');
+
+  const fromAmount = parseFloat(quote.fromTokenAmount) / Math.pow(10, fromDecimals);
+  const toAmount = parseFloat(quote.toTokenAmount) / Math.pow(10, toDecimals);
+  const price = fromAmount > 0 ? toAmount / fromAmount : 0;
+
+  return {
+    price,
+    chainIndex,
+    fromToken,
+    toToken,
+    priceImpact: parseFloat(quote.priceImpactPercentage || '0'),
+    gasFee: quote.estimateGasFee,
+  };
 }
 
-export async function getTotalValue(
-  chainIndex: string,
-  address: string
-): Promise<TotalValueResponse> {
-  const result = await onchainOSGet<TotalValueResponse[]>(
-    '/api/v6/wallet/asset/total-value',
-    { chainIndex, address }
-  );
-  return result.data[0];
+/**
+ * Get price of the same token pair across multiple chains.
+ * Used by Scout to compare X Layer vs Ethereum prices.
+ */
+export async function getMultiChainPrices(
+  fromToken: string,
+  toTokenByChain: Record<string, string>,
+  amount?: string
+): Promise<PriceResult[]> {
+  const results: PriceResult[] = [];
+  for (const [chainIndex, toToken] of Object.entries(toTokenByChain)) {
+    try {
+      const result = await getPrice(chainIndex, fromToken, toToken, amount);
+      results.push(result);
+    } catch (err) {
+      logError('onchainOS', `Failed to get price on chain ${chainIndex}`, err);
+    }
+  }
+  return results;
 }

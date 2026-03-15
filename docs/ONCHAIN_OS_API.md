@@ -1,5 +1,22 @@
 # OnchainOS API Reference
 
+## API Availability (Verified March 2026)
+
+| Endpoint | Status | Notes |
+|---|---|---|
+| `GET /api/v6/dex/aggregator/quote` | **WORKING** | Price oracle + swap routing |
+| `GET /api/v6/dex/aggregator/approve` | **WORKING** | Token approvals |
+| `GET /api/v6/dex/aggregator/swap` | **WORKING** | Swap calldata |
+| `GET /api/v6/dex/market/price-info` | **NOT AVAILABLE** | Use aggregator/quote instead |
+| `GET /api/v6/dex/market/trades` | **NOT AVAILABLE** | — |
+| `GET /api/v6/dex/market/candles` | **NOT AVAILABLE** | — |
+| `GET /api/v6/dex/market/token-list` | **NOT AVAILABLE** | — |
+| `GET /api/v6/wallet/asset/*` | **NOT AVAILABLE** | Use ethers.js RPC instead |
+
+**Price Oracle Workaround**: We use `aggregator/quote` with a small amount (0.001 ETH) to derive token prices. This is implemented in `shared/onchainOS.ts` as `getPrice()`.
+
+**Portfolio Monitoring Workaround**: We use ethers.js `provider.getBalance()` and ERC20 `balanceOf()` to read balances directly from the X Layer RPC.
+
 ## Base URL
 
 ```
