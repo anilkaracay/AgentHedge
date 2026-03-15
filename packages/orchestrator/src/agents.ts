@@ -125,16 +125,24 @@ async function startAnalyst(): Promise<void> {
       if (!signal?.id) return;
       if (Date.now() > new Date(signal.expiresAt).getTime()) return;
 
-      // Re-scan for fresh prices
       const tokenCfg = TRACKED_TOKENS.find(t => t.symbol === signal.token);
       if (!tokenCfg) return;
-      const freshScan = await scanAllVenues(tokenCfg);
+
+      // In demo mode: use the spiked signal directly (don't re-scan which loses the spike)
+      // In real mode: re-scan for fresh prices
+      let freshScan = { cheapest: signal.buyVenue, mostExpensive: signal.sellVenue, venues: signal.allVenues, spreadPercent: signal.spreadPercent, spreadAbsolute: signal.spreadAbsolute, scanDuration: 0, token: signal.token, timestamp: signal.timestamp };
+      if (!isDemoMode()) {
+        const realScan = await scanAllVenues(tokenCfg);
+        freshScan = realScan;
+      }
 
       const freshOpp = { ...signal, buyVenue: freshScan.cheapest, sellVenue: freshScan.mostExpensive, allVenues: freshScan.venues, spreadPercent: freshScan.spreadPercent };
 
       // Trade size optimization
       const sizing = calculateMinProfitableSize(freshOpp);
-      const tradeSize = Math.min(sizing.optimalSizeUSD, config.MAX_TRADE_SIZE_USDC);
+      const tradeSize = isDemoMode()
+        ? parseFloat(process.env.DEMO_TRADE_SIZE ?? '10000')
+        : Math.min(sizing.optimalSizeUSD, config.MAX_TRADE_SIZE_USDC);
       logInfo('analyst', `Sizing: min $${sizing.minSizeUSD} | optimal $${sizing.optimalSizeUSD} | using $${tradeSize}`);
 
       // Full cost breakdown with context-dependent transfer fees
@@ -162,34 +170,73 @@ async function startAnalyst(): Promise<void> {
       logInfo('analyst', `${signal.token}: ${action} | net $${costs.netProfit.toFixed(3)} (${costs.netProfitPercent.toFixed(2)}%) | transfer: ${costs.transferNote}`);
       eventBus.emitDashboardEvent({ type: 'analysis_complete', data: latestRecommendation, timestamp: latestRecommendation.timestamp });
 
-      // Demo mode: simulate trade execution on EXECUTE
+      // Demo mode: simulate full trade execution pipeline
       if (action === 'EXECUTE' && isDemoMode()) {
         const tradeSize = parseFloat(process.env.DEMO_TRADE_SIZE ?? '10000');
         const okbAmount = tradeSize / freshScan.cheapest.price;
+        const now = new Date().toISOString();
+
+        // x402 payment: Analyst purchased Scout signal
+        eventBus.emitDashboardEvent({ type: 'x402_payment', data: { from: 'analyst', to: 'scout', amount: 0.02, purpose: 'signal_purchase' }, timestamp: now });
+
+        // x402 payment: Executor purchased Analyst recommendation
+        eventBus.emitDashboardEvent({ type: 'x402_payment', data: { from: 'executor', to: 'analyst', amount: 0.03, purpose: 'analysis_purchase' }, timestamp: now });
+
         logInfo('executor', `[DEMO] BUY ${okbAmount.toFixed(2)} OKB @ ${freshScan.cheapest.venue} $${freshScan.cheapest.price.toFixed(2)}`);
         logInfo('executor', `[DEMO] SELL ${okbAmount.toFixed(2)} OKB @ ${freshScan.mostExpensive.venue} $${freshScan.mostExpensive.price.toFixed(2)}`);
+
         updateDemoBalance(freshScan.cheapest.venue, freshScan.mostExpensive.venue, okbAmount, tradeSize, costs.netProfit);
+
+        // Trade executed event
         eventBus.emitDashboardEvent({
           type: 'trade_executed',
           data: {
             id: uuidv4(), recommendationId: latestRecommendation.id, status: 'EXECUTED',
-            fromToken: signal.token, toToken: 'USDC', amountIn: okbAmount.toFixed(4),
-            amountOut: (tradeSize + costs.netProfit).toFixed(2),
-            realizedProfit: costs.netProfit, timestamp: new Date().toISOString(),
+            fromToken: signal.token, toToken: 'USDC',
+            amountIn: okbAmount.toFixed(4), amountOut: (tradeSize + costs.netProfit).toFixed(2),
+            realizedProfit: costs.netProfit, timestamp: now,
           },
-          timestamp: new Date().toISOString(),
+          timestamp: now,
         });
+
+        // Profit distribution
+        const executorFee = costs.netProfit * 0.10;
+        const treasuryFee = costs.netProfit * 0.05;
+        eventBus.emitDashboardEvent({ type: 'x402_payment', data: { from: 'treasury', to: 'executor', amount: executorFee, purpose: 'executor_fee' }, timestamp: now });
+        eventBus.emitDashboardEvent({
+          type: 'profit_distributed',
+          data: { tradeId: latestRecommendation.id, totalProfit: costs.netProfit, executorFee, treasuryFee, poolReturn: costs.netProfit * 0.85, timestamp: now },
+          timestamp: now,
+        });
+
+        // Update portfolio
         const dp = getDemoPortfolio();
-        logInfo('executor', `[DEMO] Trade complete. Session P&L: $${dp.sessionPnL.toFixed(2)} (${dp.tradeCount} trades, ${dp.profitableCount} profitable)`);
+        eventBus.emitDashboardEvent({
+          type: 'portfolio_update',
+          data: {
+            totalValueUSD: dp.totalCapital, dailyPnL: dp.sessionPnL,
+            dailyPnLPercent: (dp.sessionPnL / 800000) * 100,
+            tokenBalances: [
+              { token: 'OKB', balance: dp.totalOKB.toFixed(2), valueUSD: dp.totalOKB * freshScan.mostExpensive.price },
+              { token: 'USDT', balance: dp.totalUSDT.toFixed(2), valueUSD: dp.totalUSDT },
+            ],
+            circuitBreakerActive: false,
+          },
+          timestamp: now,
+        });
+
+        logInfo('executor', `[DEMO] Session P&L: $${dp.sessionPnL.toFixed(2)} (${dp.tradeCount} trades, ${dp.profitableCount} profitable)`);
       }
     } catch (err) {
       logError('analyst', 'Analysis failed', err);
     }
   }
 
-  await sleep(15000);
+  const analyzeDelay = isDemoMode() ? 8000 : 15000;
+  const analyzeInterval = isDemoMode() ? config.SCOUT_POLL_INTERVAL * 4 : config.SCOUT_POLL_INTERVAL * 7;
+  await sleep(analyzeDelay);
   await analyze();
-  setInterval(() => { void analyze(); }, config.SCOUT_POLL_INTERVAL * 7);
+  setInterval(() => { void analyze(); }, analyzeInterval);
 }
 
 // ── Executor + Treasury (unchanged logic) ──

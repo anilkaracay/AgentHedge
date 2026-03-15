@@ -19,9 +19,9 @@ export interface DemoPortfolio {
 }
 
 const INITIAL_PER_VENUE = { okb: 520, usdt: 50000 };
-const SPIKE_PROB = parseFloat(process.env.DEMO_SPIKE_PROBABILITY ?? '0.12');
 
 let demoPortfolio: DemoPortfolio | null = null;
+let demoCycleCount = 0;
 
 export function isDemoMode(): boolean {
   return process.env.DEMO_MODE === 'true';
@@ -59,32 +59,45 @@ export function updateDemoBalance(buyVenue: string, sellVenue: string, okbAmount
   p.sessionPnL += netProfit;
   p.tradeCount++;
   if (netProfit > 0) p.profitableCount++;
-  // Recalc totals
   p.totalOKB = p.venues.reduce((s, v) => s + v.okbBalance, 0);
   p.totalUSDT = p.venues.reduce((s, v) => s + v.usdtBalance, 0);
   p.totalCapital = p.venues.reduce((s, v) => s + v.okbBalance * 96 + v.usdtBalance, 0);
 }
 
+/**
+ * Inject a volatility spike in demo mode.
+ * Cycle 1: ALWAYS spike (show immediate activity)
+ * Every 3rd cycle: guaranteed spike
+ * Otherwise: 20% random chance
+ * Spread is widened to 0.55-0.85% — guaranteed profitable after fees.
+ */
 export function maybeInjectVolatilitySpike(scan: MultiVenueScan): MultiVenueScan {
   if (!isDemoMode()) return scan;
-  if (Math.random() >= SPIKE_PROB) return scan;
 
-  const spikePercent = 0.003 + Math.random() * 0.004; // 0.3-0.7%
-  const spikeAmount = spikePercent * scan.cheapest.price;
+  demoCycleCount++;
+  const shouldSpike = demoCycleCount === 1 || demoCycleCount % 3 === 0 || Math.random() < 0.20;
+  if (!shouldSpike) return scan;
+
+  // Target spread 0.55-0.85% — always above exchange fees (~0.4%)
+  const targetSpreadPct = 0.55 + Math.random() * 0.30;
+  const targetSpreadAbs = scan.mostExpensive.price * (targetSpreadPct / 100);
+  const adjustedPrice = scan.mostExpensive.price - targetSpreadAbs;
 
   const spiked: MultiVenueScan = {
     ...scan,
-    cheapest: { ...scan.cheapest, price: scan.cheapest.price - spikeAmount },
+    cheapest: { ...scan.cheapest, price: adjustedPrice },
     venues: scan.venues.map(v =>
-      v.venue === scan.cheapest.venue ? { ...v, price: v.price - spikeAmount } : v
-    ),
+      v.venue === scan.cheapest.venue ? { ...v, price: adjustedPrice } : v
+    ).sort((a, b) => a.price - b.price),
+    spreadAbsolute: parseFloat(targetSpreadAbs.toFixed(4)),
+    spreadPercent: parseFloat(targetSpreadPct.toFixed(4)),
+    scanDuration: scan.scanDuration,
+    token: scan.token,
+    timestamp: scan.timestamp,
   };
-  spiked.venues.sort((a, b) => a.price - b.price);
   spiked.cheapest = spiked.venues[0];
   spiked.mostExpensive = spiked.venues[spiked.venues.length - 1];
-  spiked.spreadAbsolute = spiked.mostExpensive.price - spiked.cheapest.price;
-  spiked.spreadPercent = parseFloat(((spiked.spreadAbsolute / spiked.mostExpensive.price) * 100).toFixed(4));
 
-  logInfo('scout', `[DEMO] Volatility spike: spread widened to ${spiked.spreadPercent.toFixed(2)}%`);
+  logInfo('scout', `[DEMO] Volatility spike (cycle ${demoCycleCount}): spread ${targetSpreadPct.toFixed(2)}% ($${targetSpreadAbs.toFixed(2)})`);
   return spiked;
 }
