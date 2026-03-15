@@ -8,6 +8,7 @@ import { v4 as uuidv4 } from 'uuid';
 import {
   config, logInfo, logError, eventBus,
   getPrice, getSwapQuote, scanAllVenues,
+  estimateTradeCosts, formatProfitReport,
   TRACKED_TOKENS, USDC_XLAYER,
   createX402Middleware, callPaidEndpoint,
 } from '@agenthedge/shared';
@@ -124,30 +125,29 @@ async function startAnalyst(): Promise<void> {
       if (!tokenCfg) return;
       const freshScan = await scanAllVenues(tokenCfg);
 
-      const tradeAmountUSDC = config.MAX_TRADE_SIZE_USDC;
-      const grossProfit = (freshScan.spreadPercent / 100) * tradeAmountUSDC;
-      const dexCost = 0.05; // slippage + gas estimate
-      const netProfit = grossProfit - dexCost - 0.05;
-      const action = netProfit > 0.10 ? 'EXECUTE' as const : 'SKIP' as const;
+      // Use profit calculator with full cost breakdown
+      const freshOpp = { ...signal, buyVenue: freshScan.cheapest, sellVenue: freshScan.mostExpensive, allVenues: freshScan.venues, spreadPercent: freshScan.spreadPercent };
+      const costs = estimateTradeCosts(freshOpp, config.MAX_TRADE_SIZE_USDC);
+      const action = costs.netProfit > 0.01 ? 'EXECUTE' as const : 'SKIP' as const;
 
-      const buyV = freshScan.cheapest;
-      const sellV = freshScan.mostExpensive;
+      const report = formatProfitReport(costs, freshScan.cheapest.venue, freshScan.mostExpensive.venue, signal.token);
+      logInfo('analyst', `\n${report}`);
 
       latestRecommendation = {
         id: uuidv4(),
         signalId: signal.id,
         action,
         confidence: signal.confidence,
-        estimatedProfit: parseFloat(netProfit.toFixed(4)),
-        estimatedSlippage: 0.1,
-        estimatedPriceImpact: 0.1,
+        estimatedProfit: costs.netProfit,
+        estimatedSlippage: costs.buySlippage + costs.sellSlippage,
+        estimatedPriceImpact: costs.buyExchangeFee + costs.sellExchangeFee,
         suggestedAmount: tokenCfg.quoteAmount,
         suggestedMinOutput: '0',
-        reason: `BUY @ ${buyV.venue} $${buyV.price.toFixed(2)}, SELL @ ${sellV.venue} $${sellV.price.toFixed(2)} | ${freshScan.venues.length} venues | net $${netProfit.toFixed(2)}`,
+        reason: `${freshScan.cheapest.venue} $${freshScan.cheapest.price.toFixed(2)} -> ${freshScan.mostExpensive.venue} $${freshScan.mostExpensive.price.toFixed(2)} | gross $${costs.grossProfit.toFixed(3)} - costs $${costs.totalCosts.toFixed(3)} = net $${costs.netProfit.toFixed(3)}`,
         timestamp: new Date().toISOString(),
       };
 
-      logInfo('analyst', `${signal.token}: ${action} | spread ${freshScan.spreadPercent.toFixed(2)}% | net $${netProfit.toFixed(2)}`);
+      logInfo('analyst', `${signal.token}: ${action} | net $${costs.netProfit.toFixed(3)} (${costs.netProfitPercent.toFixed(2)}%)`);
       eventBus.emitDashboardEvent({ type: 'analysis_complete', data: latestRecommendation, timestamp: latestRecommendation.timestamp });
     } catch (err) {
       logError('analyst', 'Analysis failed', err);
