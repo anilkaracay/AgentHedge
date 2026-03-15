@@ -63,7 +63,7 @@ The system is fully autonomous (zero human intervention per arbitrage cycle), x4
 
 ### Data Flow Per Cycle
 
-1. Scout quotes the same token on X Layer (chainIndex=196) and Ethereum (chainIndex=1) via `aggregator/quote`. If the price spread exceeds 0.3%, an `OpportunitySignal` is stored at the Scout's x402 endpoint.
+1. Scout compares X Layer DEX prices (via OnchainOS `aggregator/quote`) with CEX spot prices (OKX/Binance public APIs) for the same token. If the spread exceeds 0.3%, an `ArbitrageOpportunity` is stored at the Scout's x402 endpoint.
 2. Analyst purchases the signal (pays 0.02 USDC via x402), validates freshness (<30s), re-quotes for current price, and calculates net profit after slippage, price impact, gas, and agent fees. Produces an `ExecutionRecommendation`.
 3. Executor purchases the recommendation (pays 0.03 USDC via x402), requests risk approval from Treasury, then executes the full `quote -> approve -> swap` pipeline via OnchainOS Trade API.
 4. Treasury receives the trade result, distributes profit (10% to Executor, 5% management fee, 85% to capital pool), monitors portfolio via direct chain queries, and enforces circuit breaker logic.
