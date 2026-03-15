@@ -11,7 +11,7 @@ import {
   getIndexPrice, getCandles, getRecentTrades,
   getTotalValue, getTokenBalances, getGasPrice, getPortfolioOverview,
   estimateTradeCosts, calculateMinProfitableSize, formatProfitReport,
-  isDemoMode, getDemoPortfolio, updateDemoBalance, maybeInjectVolatilitySpike,
+  isDemoMode, getDemoPortfolio, updateDemoBalance, maybeInjectVolatilitySpike, FEE_STRUCTURE,
   TRACKED_TOKENS, USDC_XLAYER,
   createX402Middleware, callPaidEndpoint,
 } from '@agenthedge/shared';
@@ -170,62 +170,88 @@ async function startAnalyst(): Promise<void> {
       logInfo('analyst', `${signal.token}: ${action} | net $${costs.netProfit.toFixed(3)} (${costs.netProfitPercent.toFixed(2)}%) | transfer: ${costs.transferNote}`);
       eventBus.emitDashboardEvent({ type: 'analysis_complete', data: latestRecommendation, timestamp: latestRecommendation.timestamp });
 
-      // Demo mode: simulate full trade execution pipeline
+      // Demo mode: execute ALL profitable venue pairs simultaneously
       if (action === 'EXECUTE' && isDemoMode()) {
         const tradeSize = parseFloat(process.env.DEMO_TRADE_SIZE ?? '10000');
-        const okbAmount = tradeSize / freshScan.cheapest.price;
         const now = new Date().toISOString();
+        const venues = freshScan.venues;
+        let totalSessionProfit = 0;
+        let tradeCount = 0;
 
-        // x402 payment: Analyst purchased Scout signal
+        // x402 payments for signal + recommendation (once per cycle)
         eventBus.emitDashboardEvent({ type: 'x402_payment', data: { from: 'analyst', to: 'scout', amount: 0.02, purpose: 'signal_purchase' }, timestamp: now });
-
-        // x402 payment: Executor purchased Analyst recommendation
         eventBus.emitDashboardEvent({ type: 'x402_payment', data: { from: 'executor', to: 'analyst', amount: 0.03, purpose: 'analysis_purchase' }, timestamp: now });
 
-        logInfo('executor', `[DEMO] BUY ${okbAmount.toFixed(2)} OKB @ ${freshScan.cheapest.venue} $${freshScan.cheapest.price.toFixed(2)}`);
-        logInfo('executor', `[DEMO] SELL ${okbAmount.toFixed(2)} OKB @ ${freshScan.mostExpensive.venue} $${freshScan.mostExpensive.price.toFixed(2)}`);
+        // Find ALL profitable pairs: every buyVenue cheaper than every sellVenue
+        for (let i = 0; i < venues.length; i++) {
+          for (let j = i + 1; j < venues.length; j++) {
+            const buyV = venues[i];  // cheaper (sorted ascending)
+            const sellV = venues[j]; // more expensive
+            const pairSpread = sellV.price - buyV.price;
+            const pairSpreadPct = (pairSpread / sellV.price) * 100;
 
-        updateDemoBalance(freshScan.cheapest.venue, freshScan.mostExpensive.venue, okbAmount, tradeSize, costs.netProfit);
+            // Calculate costs for this pair
+            const buyFeeRate = FEE_STRUCTURE.takerFees[buyV.venue] ?? 0.002;
+            const sellFeeRate = FEE_STRUCTURE.takerFees[sellV.venue] ?? 0.002;
+            const okbAmount = tradeSize / buyV.price;
+            const grossProfit = pairSpread * okbAmount;
+            const buyCost = tradeSize * buyFeeRate;
+            const sellCost = (tradeSize + grossProfit) * sellFeeRate;
+            const sellSlip = sellV.venueType === 'dex' ? tradeSize * 0.001 : 0;
+            const pairNetProfit = grossProfit - buyCost - sellCost - sellSlip - 0.01; // tiny agent fee share
 
-        // Trade executed event
-        eventBus.emitDashboardEvent({
-          type: 'trade_executed',
-          data: {
-            id: uuidv4(), recommendationId: latestRecommendation.id, status: 'EXECUTED',
-            fromToken: signal.token, toToken: 'USDC',
-            amountIn: okbAmount.toFixed(4), amountOut: (tradeSize + costs.netProfit).toFixed(2),
-            realizedProfit: costs.netProfit, timestamp: now,
-          },
-          timestamp: now,
-        });
+            if (pairNetProfit <= 0) continue; // skip unprofitable pairs
 
-        // Profit distribution
-        const executorFee = costs.netProfit * 0.10;
-        const treasuryFee = costs.netProfit * 0.05;
-        eventBus.emitDashboardEvent({ type: 'x402_payment', data: { from: 'treasury', to: 'executor', amount: executorFee, purpose: 'executor_fee' }, timestamp: now });
-        eventBus.emitDashboardEvent({
-          type: 'profit_distributed',
-          data: { tradeId: latestRecommendation.id, totalProfit: costs.netProfit, executorFee, treasuryFee, poolReturn: costs.netProfit * 0.85, timestamp: now },
-          timestamp: now,
-        });
+            tradeCount++;
+            totalSessionProfit += pairNetProfit;
+            updateDemoBalance(buyV.venue, sellV.venue, okbAmount, tradeSize, pairNetProfit);
 
-        // Update portfolio
-        const dp = getDemoPortfolio();
-        eventBus.emitDashboardEvent({
-          type: 'portfolio_update',
-          data: {
-            totalValueUSD: dp.totalCapital, dailyPnL: dp.sessionPnL,
-            dailyPnLPercent: (dp.sessionPnL / 800000) * 100,
-            tokenBalances: [
-              { token: 'OKB', balance: dp.totalOKB.toFixed(2), valueUSD: dp.totalOKB * freshScan.mostExpensive.price },
-              { token: 'USDT', balance: dp.totalUSDT.toFixed(2), valueUSD: dp.totalUSDT },
-            ],
-            circuitBreakerActive: false,
-          },
-          timestamp: now,
-        });
+            logInfo('executor', `[DEMO] #${tradeCount} BUY ${okbAmount.toFixed(1)} OKB @ ${buyV.venue} $${buyV.price.toFixed(2)} -> SELL @ ${sellV.venue} $${sellV.price.toFixed(2)} | net +$${pairNetProfit.toFixed(2)}`);
 
-        logInfo('executor', `[DEMO] Session P&L: $${dp.sessionPnL.toFixed(2)} (${dp.tradeCount} trades, ${dp.profitableCount} profitable)`);
+            eventBus.emitDashboardEvent({
+              type: 'trade_executed',
+              data: {
+                id: uuidv4(), recommendationId: latestRecommendation.id, status: 'EXECUTED',
+                fromToken: `${signal.token} (${buyV.venue}->${sellV.venue})`, toToken: 'USDC',
+                amountIn: okbAmount.toFixed(4), amountOut: (tradeSize + pairNetProfit).toFixed(2),
+                realizedProfit: parseFloat(pairNetProfit.toFixed(4)), timestamp: now,
+              },
+              timestamp: now,
+            });
+
+            // x402 profit share per trade
+            eventBus.emitDashboardEvent({ type: 'x402_payment', data: { from: 'treasury', to: 'executor', amount: parseFloat((pairNetProfit * 0.10).toFixed(4)), purpose: `executor_fee (${buyV.venue}->${sellV.venue})` }, timestamp: now });
+          }
+        }
+
+        if (tradeCount > 0) {
+          logInfo('executor', `[DEMO] Cycle: ${tradeCount} trades across ${venues.length} venues, cycle profit +$${totalSessionProfit.toFixed(2)}`);
+
+          // Profit distribution summary
+          eventBus.emitDashboardEvent({
+            type: 'profit_distributed',
+            data: { tradeId: latestRecommendation.id, totalProfit: totalSessionProfit, executorFee: totalSessionProfit * 0.10, treasuryFee: totalSessionProfit * 0.05, poolReturn: totalSessionProfit * 0.85, timestamp: now },
+            timestamp: now,
+          });
+
+          // Update portfolio
+          const dp = getDemoPortfolio();
+          eventBus.emitDashboardEvent({
+            type: 'portfolio_update',
+            data: {
+              totalValueUSD: dp.totalCapital, dailyPnL: dp.sessionPnL,
+              dailyPnLPercent: (dp.sessionPnL / 800000) * 100,
+              tokenBalances: [
+                { token: 'OKB', balance: dp.totalOKB.toFixed(2), valueUSD: dp.totalOKB * venues[venues.length - 1].price },
+                { token: 'USDT', balance: dp.totalUSDT.toFixed(2), valueUSD: dp.totalUSDT },
+              ],
+              circuitBreakerActive: false,
+            },
+            timestamp: now,
+          });
+
+          logInfo('executor', `[DEMO] Session total: $${dp.sessionPnL.toFixed(2)} (${dp.tradeCount} trades, ${dp.profitableCount} profitable)`);
+        }
       }
     } catch (err) {
       logError('analyst', 'Analysis failed', err);
