@@ -1,0 +1,67 @@
+[
+  {
+    "step": "fund-okb",
+    "description": "Fund SCOUT with OKB",
+    "hash": "0x8640e3f255cd24fb9295eea825fc95c7aa02094558f94cb7017f29b788a4f0c5"
+  },
+  {
+    "step": "fund-okb",
+    "description": "Fund ANALYST with OKB",
+    "hash": "0x4410a6cc952203144f0b331d223c200d8408553b7387bd5539a4bfba75e3abec"
+  },
+  {
+    "step": "fund-okb",
+    "description": "Fund EXECUTOR with OKB",
+    "hash": "0x64c1bcbea7d9fd9292b4b8a84f88fc2f25d39b563e24228173018e4db4cd830e"
+  },
+  {
+    "step": "fund-okb",
+    "description": "Fund TREASURY with OKB",
+    "hash": "0xb3ef5acb45f1f8c883566fd978cd8b59871d149e69ad42cf3f81f1b1b5b5655a"
+  },
+  {
+    "step": "fund-usdc",
+    "description": "Send 0.1 USDC to SCOUT",
+    "hash": "0x12d67909a985beda537b0af0534215e8bd756eb9ffbccb225dd34156911a1d1d"
+  },
+  {
+    "step": "fund-usdc",
+    "description": "Send 0.5 USDC to ANALYST",
+    "hash": "0xaf3873a99f248d097c1ed7f221356904b24ab60ddd706d439d62d36741b78aa9"
+  },
+  {
+    "step": "fund-usdc",
+    "description": "Send 0.5 USDC to EXECUTOR",
+    "hash": "0x3b22ec6454262f03a1a37742aac82e2b92e7e5bb6c4c77a3c6d971007b17fcb9"
+  },
+  {
+    "step": "register",
+    "description": "Register scout",
+    "hash": "0x6a87c5caa75cece7b030e382420dbd2861ba4835c8c47735f74822a7a95c74dd"
+  },
+  {
+    "step": "register",
+    "description": "Register analyst",
+    "hash": "0x4c32f645b9dcc7fd0c23a48a14cfcd7d43075abe54a4c90762f003d81b83d0c8"
+  },
+  {
+    "step": "register",
+    "description": "Register executor",
+    "hash": "0x2230a8dbf35e0a8a30967b404f42bc533be1a0a1193a6c2e4c69dbd0e0f93ab7"
+  },
+  {
+    "step": "register",
+    "description": "Register treasury",
+    "hash": "0xb1730237bbbd34f7f265cb5d477f75b990164d39263902b7695323251917a38f"
+  },
+  {
+    "step": "cycle-1",
+    "description": "Cycle 1: executor recordSuccess",
+    "hash": "0x4ea5fd0ee46bd884ea06cf839cc5cab12aa400e88513e667faa9dcf0cfa2d69a"
+  },
+  {
+    "step": "cycle-2",
+    "description": "Cycle 2: executor recordSuccess",
+    "hash": "0x3875480e9d6f48a1f4657ae3cfc15bb5d51515b02c828c36be56a8cf980fc7a1"
+  }
+]
