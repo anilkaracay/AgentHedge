@@ -42,11 +42,20 @@ export async function analyzeSignal(
   const report = formatProfitReport(costs, freshOpp.buyVenue.venue, freshOpp.sellVenue.venue, signal.token);
   logInfo('analyst', `\n${report}`);
 
-  const action = costs.profitable ? 'EXECUTE' as const : 'SKIP' as const;
+  // Three-way decision: EXECUTE / MONITOR / SKIP
+  const hasSpread = freshOpp.spreadPercent > 0.05;
+  const action: 'EXECUTE' | 'MONITOR' | 'SKIP' = costs.profitable
+    ? 'EXECUTE'
+    : hasSpread
+      ? 'MONITOR'
+      : 'SKIP';
 
-  const reason = costs.profitable
+  const costCoverage = costs.grossProfit > 0 ? (costs.grossProfit / costs.totalCosts * 100).toFixed(0) : '0';
+  const reason = action === 'EXECUTE'
     ? `${freshOpp.buyVenue.venue} $${freshOpp.buyVenue.price.toFixed(2)} -> ${freshOpp.sellVenue.venue} $${freshOpp.sellVenue.price.toFixed(2)} | net $${costs.netProfit.toFixed(3)} (${costs.netProfitPercent.toFixed(2)}%) | transfer: ${costs.transferNote}`
-    : `Net $${costs.netProfit.toFixed(3)} not profitable. Min trade: $${sizing.minSizeUSD}. Transfer: ${costs.transferNote}`;
+    : action === 'MONITOR'
+      ? `Spread ${freshOpp.spreadPercent.toFixed(2)}% covers ${costCoverage}% of costs. Profitable at ~${(costs.totalCosts / (tradeSize || 500) * 100).toFixed(2)}% spread. Min trade: $${sizing.minSizeUSD === Infinity ? 'N/A (fees > spread)' : sizing.minSizeUSD.toFixed(0)}`
+      : `No meaningful spread (${freshOpp.spreadPercent.toFixed(4)}%)`;
 
   return {
     id: uuidv4(),

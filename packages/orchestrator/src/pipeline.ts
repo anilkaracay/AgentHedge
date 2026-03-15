@@ -55,7 +55,13 @@ export async function runArbitrageCycle(): Promise<void> {
     const recommendation = await analystRes.json() as ExecutionRecommendation;
     logInfo('orchestrator', `Recommendation: ${recommendation.action}, profit $${recommendation.estimatedProfit}`);
 
-    if (recommendation.action !== 'EXECUTE') {
+    if (recommendation.action === 'MONITOR') {
+      logInfo('orchestrator', `Analyst says MONITOR: ${recommendation.reason}`);
+      emitCycleComplete(cycleId, startTime, 'monitor');
+      return;
+    }
+
+    if (recommendation.action === 'SKIP') {
       logInfo('orchestrator', `Analyst says SKIP: ${recommendation.reason}`);
       emitCycleComplete(cycleId, startTime, 'skip');
       return;

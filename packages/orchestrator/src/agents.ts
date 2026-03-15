@@ -137,7 +137,8 @@ async function startAnalyst(): Promise<void> {
       const report = formatProfitReport(costs, freshScan.cheapest.venue, freshScan.mostExpensive.venue, signal.token);
       logInfo('analyst', `\n${report}`);
 
-      const action = costs.profitable ? 'EXECUTE' as const : 'SKIP' as const;
+      const hasSpread = freshScan.spreadPercent > 0.05;
+      const action: 'EXECUTE' | 'MONITOR' | 'SKIP' = costs.profitable ? 'EXECUTE' : hasSpread ? 'MONITOR' : 'SKIP';
 
       latestRecommendation = {
         id: uuidv4(),

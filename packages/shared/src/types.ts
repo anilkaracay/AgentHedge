@@ -70,7 +70,7 @@ export interface PricePoint {
 export interface ExecutionRecommendation {
   id: string;
   signalId: string;
-  action: 'EXECUTE' | 'SKIP';
+  action: 'EXECUTE' | 'MONITOR' | 'SKIP';
   confidence: number;
   estimatedProfit: number;
   estimatedSlippage: number;
