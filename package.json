@@ -1,0 +1,20 @@
+{
+  "name": "agenthedge",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "packages/agents/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "dev": "npm run dev --workspaces --if-present",
+    "deploy:contract": "cd packages/contracts && npx hardhat run scripts/deploy.ts --network xlayer_testnet",
+    "start:agents": "concurrently \"npm run start -w @agenthedge/scout\" \"npm run start -w @agenthedge/analyst\" \"npm run start -w @agenthedge/executor\" \"npm run start -w @agenthedge/treasury\"",
+    "start:orchestrator": "npm run start -w @agenthedge/orchestrator",
+    "start:dashboard": "npm run dev -w @agenthedge/dashboard"
+  },
+  "devDependencies": {
+    "concurrently": "^8.0.0",
+    "typescript": "^5.4.0"
+  }
+}
