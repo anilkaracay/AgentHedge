@@ -283,9 +283,9 @@ footer .footer-links a:hover{color:var(--text)}
     </div>
 
     <div class="metrics fade-in">
-      <div class="metric"><div class="metric-val">13</div><div class="metric-label">Mainnet Transactions</div></div>
-      <div class="metric"><div class="metric-val">4</div><div class="metric-label">Registered Agents</div></div>
-      <div class="metric"><div class="metric-val">2</div><div class="metric-label">Demo Cycles</div></div>
+      <div class="metric"><div class="metric-val" id="m-tx">13</div><div class="metric-label">Mainnet Transactions</div></div>
+      <div class="metric"><div class="metric-val" id="m-agents">4</div><div class="metric-label">Registered Agents</div></div>
+      <div class="metric"><div class="metric-val" id="m-cycles">2</div><div class="metric-label">Demo Cycles</div></div>
       <div class="metric"><div class="metric-val accent">$0.00</div><div class="metric-label">Gas Cost (x402)</div></div>
     </div>
 
@@ -354,45 +354,56 @@ const observer = new IntersectionObserver((entries) => {
 }, { threshold: 0.15 });
 document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
 
-// Terminal data simulation
-const data = {
-  xlayer: [97.82, 97.91, 97.65, 98.02, 97.78, 97.85, 97.93, 97.68],
-  eth: [2119.54, 2118.87, 2121.03, 2117.62, 2120.11, 2116.91, 2119.29, 2118.45],
-  conf: [0.82, 0.79, 0.85, 0.71, 0.88, 0.76, 0.83, 0.80],
-  profit: [1.47, 1.23, 1.68, 0.94, 1.82, 1.15, 1.51, 1.33],
-  spread: [0.34, 0.28, 0.41, 0.22, 0.38, 0.31, 0.35, 0.29],
-  port: [4.92, 4.95, 4.88, 5.01, 4.97, 4.93, 5.04, 4.96],
-  pnl: [0.31, 0.34, 0.27, 0.40, 0.36, 0.32, 0.43, 0.35],
-  slip: [0.12, 0.15, 0.09, 0.18, 0.11, 0.14, 0.10, 0.16],
-  routes: ['PotatoSwap', 'Uniswap V4', 'PotatoSwap', 'Uniswap V4', 'PotatoSwap']
-};
-let idx = 0;
-
-function updateTerminal() {
-  const i = idx % data.xlayer.length;
-  const ri = idx % data.routes.length;
-  const els = {
-    'tv-xlayer': '$' + data.xlayer[i].toFixed(2),
-    'tv-eth': '$' + data.eth[i].toFixed(2),
-    'tv-spread': data.spread[i].toFixed(2) + '%',
-    'tv-conf': data.conf[i].toFixed(2),
-    'tv-profit': '$' + data.profit[i].toFixed(2),
-    'tv-action': data.profit[i] > 1.0 ? 'EXECUTE' : 'SKIP',
-    'tv-route': data.routes[ri],
-    'tv-slip': data.slip[i].toFixed(2) + '%',
-    'tv-port': '$' + data.port[i].toFixed(2),
-    'tv-pnl': '+$' + data.pnl[i].toFixed(2)
-  };
-  for (const [id, val] of Object.entries(els)) {
-    const el = document.getElementById(id);
-    if (el && el.textContent !== val) {
-      el.style.opacity = '0.3';
-      setTimeout(() => { el.textContent = val; el.style.opacity = '1'; }, 150);
-    }
-  }
-  idx++;
+// Smooth value update with fade
+function setVal(id, val) {
+  const el = document.getElementById(id);
+  if (!el || el.textContent === val) return;
+  el.style.transition = 'opacity 0.15s';
+  el.style.opacity = '0.3';
+  setTimeout(() => { el.textContent = val; el.style.opacity = '1'; }, 150);
 }
-setInterval(updateTerminal, 3500);
+
+// Live data from orchestrator API
+const API_URL = 'http://localhost:3005/api/live-prices';
+let lastData = null;
+
+async function fetchLive() {
+  try {
+    const res = await fetch(API_URL);
+    if (!res.ok) throw new Error('API ' + res.status);
+    const d = await res.json();
+    lastData = d;
+
+    // Terminal readout
+    setVal('tv-xlayer', '$' + d.scout.xlayerPrice.toFixed(2));
+    setVal('tv-eth', '$' + d.scout.ethPrice.toFixed(2));
+    setVal('tv-spread', d.scout.spread.toFixed(2) + '%');
+    setVal('tv-conf', Number(d.analyst.confidence).toFixed(2));
+    setVal('tv-profit', '$' + Number(d.analyst.netProfit).toFixed(2));
+    setVal('tv-action', d.analyst.action);
+    setVal('tv-route', d.executor.route);
+    setVal('tv-slip', d.executor.slippage.toFixed(2) + '%');
+    setVal('tv-port', '$' + Number(d.treasury.portfolio).toFixed(2));
+    const pnl = Number(d.treasury.dailyPnl);
+    setVal('tv-pnl', (pnl >= 0 ? '+' : '') + '$' + pnl.toFixed(2));
+
+    // Metrics
+    setVal('m-tx', String(d.meta.totalTx));
+    setVal('m-agents', String(d.meta.agentsRegistered));
+    setVal('m-cycles', String(d.meta.cyclesCompleted));
+
+    // Update LIVE indicator
+    const liveEl = document.querySelector('.terminal::before');
+    document.querySelector('.terminal').setAttribute('data-live', 'true');
+  } catch (e) {
+    // API offline — terminal shows last known or static values
+    document.querySelector('.terminal').setAttribute('data-live', 'false');
+  }
+}
+
+// Initial fetch + poll every 12 seconds
+fetchLive();
+setInterval(fetchLive, 12000);
 </script>
 </body>
 </html>
