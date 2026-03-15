@@ -36,3 +36,4 @@ export {
   getAllAgents,
 } from './registry.js';
 export type { OnChainAgent } from './registry.js';
+export { AgentBase } from './AgentBase.js';
