@@ -2,16 +2,14 @@ import { v4 as uuidv4 } from 'uuid';
 import {
   scanAllVenues,
   estimateTradeCosts,
+  calculateMinProfitableSize,
   formatProfitReport,
-  getCostBreakdown,
   TRACKED_TOKENS,
   config,
   logInfo,
   logError,
 } from '@agenthedge/shared';
 import type { ArbitrageOpportunity, ExecutionRecommendation } from '@agenthedge/shared';
-
-const MIN_NET_PROFIT_USDC = 0.01; // Low for demo — real would be higher
 
 export async function analyzeSignal(
   signal: ArbitrageOpportunity
@@ -24,24 +22,31 @@ export async function analyzeSignal(
   if (!tokenCfg) return buildSkip(signal, `Unknown token ${signal.token}`);
 
   // Re-scan for fresh prices
-  let freshSignal = signal;
+  let freshOpp = signal;
   try {
     const scan = await scanAllVenues(tokenCfg);
-    freshSignal = { ...signal, buyVenue: scan.cheapest, sellVenue: scan.mostExpensive, allVenues: scan.venues, spreadPercent: scan.spreadPercent, spreadAbsolute: scan.spreadAbsolute };
+    freshOpp = { ...signal, buyVenue: scan.cheapest, sellVenue: scan.mostExpensive, allVenues: scan.venues, spreadPercent: scan.spreadPercent, spreadAbsolute: scan.spreadAbsolute };
   } catch {
     logInfo('analyst', 'Re-scan failed, using original signal');
   }
 
-  // Estimate costs with full breakdown
-  const costs = estimateTradeCosts(freshSignal, config.MAX_TRADE_SIZE_USDC);
-  const breakdown = getCostBreakdown(costs);
-  const report = formatProfitReport(costs, freshSignal.buyVenue.venue, freshSignal.sellVenue.venue, signal.token);
+  // Calculate minimum profitable trade size
+  const sizing = calculateMinProfitableSize(freshOpp);
+  logInfo('analyst', `Trade sizing: min $${sizing.minSizeUSD} | optimal $${sizing.optimalSizeUSD} | profit @ optimal $${sizing.profitAtOptimal.toFixed(3)}`);
 
+  // Use optimal trade size (capped by config)
+  const tradeSize = Math.min(sizing.optimalSizeUSD, config.MAX_TRADE_SIZE_USDC);
+
+  // Estimate costs with correct transfer fees
+  const costs = estimateTradeCosts(freshOpp, tradeSize);
+  const report = formatProfitReport(costs, freshOpp.buyVenue.venue, freshOpp.sellVenue.venue, signal.token);
   logInfo('analyst', `\n${report}`);
 
-  const action = costs.netProfit > MIN_NET_PROFIT_USDC ? 'EXECUTE' as const : 'SKIP' as const;
+  const action = costs.profitable ? 'EXECUTE' as const : 'SKIP' as const;
 
-  const reason = `${freshSignal.buyVenue.venue} $${freshSignal.buyVenue.price.toFixed(2)} -> ${freshSignal.sellVenue.venue} $${freshSignal.sellVenue.price.toFixed(2)} | gross $${costs.grossProfit.toFixed(3)} | costs $${costs.totalCosts.toFixed(3)} | net $${costs.netProfit.toFixed(3)} (${costs.netProfitPercent.toFixed(2)}%)`;
+  const reason = costs.profitable
+    ? `${freshOpp.buyVenue.venue} $${freshOpp.buyVenue.price.toFixed(2)} -> ${freshOpp.sellVenue.venue} $${freshOpp.sellVenue.price.toFixed(2)} | net $${costs.netProfit.toFixed(3)} (${costs.netProfitPercent.toFixed(2)}%) | transfer: ${costs.transferNote}`
+    : `Net $${costs.netProfit.toFixed(3)} not profitable. Min trade: $${sizing.minSizeUSD}. Transfer: ${costs.transferNote}`;
 
   return {
     id: uuidv4(),

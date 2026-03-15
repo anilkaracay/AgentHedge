@@ -8,7 +8,7 @@ import { v4 as uuidv4 } from 'uuid';
 import {
   config, logInfo, logError, eventBus,
   getPrice, getSwapQuote, scanAllVenues,
-  estimateTradeCosts, formatProfitReport,
+  estimateTradeCosts, calculateMinProfitableSize, formatProfitReport,
   TRACKED_TOKENS, USDC_XLAYER,
   createX402Middleware, callPaidEndpoint,
 } from '@agenthedge/shared';
@@ -125,13 +125,19 @@ async function startAnalyst(): Promise<void> {
       if (!tokenCfg) return;
       const freshScan = await scanAllVenues(tokenCfg);
 
-      // Use profit calculator with full cost breakdown
       const freshOpp = { ...signal, buyVenue: freshScan.cheapest, sellVenue: freshScan.mostExpensive, allVenues: freshScan.venues, spreadPercent: freshScan.spreadPercent };
-      const costs = estimateTradeCosts(freshOpp, config.MAX_TRADE_SIZE_USDC);
-      const action = costs.netProfit > 0.01 ? 'EXECUTE' as const : 'SKIP' as const;
 
+      // Trade size optimization
+      const sizing = calculateMinProfitableSize(freshOpp);
+      const tradeSize = Math.min(sizing.optimalSizeUSD, config.MAX_TRADE_SIZE_USDC);
+      logInfo('analyst', `Sizing: min $${sizing.minSizeUSD} | optimal $${sizing.optimalSizeUSD} | using $${tradeSize}`);
+
+      // Full cost breakdown with context-dependent transfer fees
+      const costs = estimateTradeCosts(freshOpp, tradeSize);
       const report = formatProfitReport(costs, freshScan.cheapest.venue, freshScan.mostExpensive.venue, signal.token);
       logInfo('analyst', `\n${report}`);
+
+      const action = costs.profitable ? 'EXECUTE' as const : 'SKIP' as const;
 
       latestRecommendation = {
         id: uuidv4(),
@@ -143,11 +149,11 @@ async function startAnalyst(): Promise<void> {
         estimatedPriceImpact: costs.buyExchangeFee + costs.sellExchangeFee,
         suggestedAmount: tokenCfg.quoteAmount,
         suggestedMinOutput: '0',
-        reason: `${freshScan.cheapest.venue} $${freshScan.cheapest.price.toFixed(2)} -> ${freshScan.mostExpensive.venue} $${freshScan.mostExpensive.price.toFixed(2)} | gross $${costs.grossProfit.toFixed(3)} - costs $${costs.totalCosts.toFixed(3)} = net $${costs.netProfit.toFixed(3)}`,
+        reason: `${freshScan.cheapest.venue} $${freshScan.cheapest.price.toFixed(2)} -> ${freshScan.mostExpensive.venue} $${freshScan.mostExpensive.price.toFixed(2)} | net $${costs.netProfit.toFixed(3)} | transfer: ${costs.transferNote}`,
         timestamp: new Date().toISOString(),
       };
 
-      logInfo('analyst', `${signal.token}: ${action} | net $${costs.netProfit.toFixed(3)} (${costs.netProfitPercent.toFixed(2)}%)`);
+      logInfo('analyst', `${signal.token}: ${action} | net $${costs.netProfit.toFixed(3)} (${costs.netProfitPercent.toFixed(2)}%) | transfer: ${costs.transferNote}`);
       eventBus.emitDashboardEvent({ type: 'analysis_complete', data: latestRecommendation, timestamp: latestRecommendation.timestamp });
     } catch (err) {
       logError('analyst', 'Analysis failed', err);
