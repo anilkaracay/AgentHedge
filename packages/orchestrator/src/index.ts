@@ -98,7 +98,9 @@ eventBus.on('dashboard_event', (event: DashboardEvent) => {
 
 // ── REST API: Live Prices ──
 let priceCache: { data: any; timestamp: number } | null = null;
-const PRICE_CACHE_TTL = 10_000; // 10s cache
+const PRICE_CACHE_TTL = 15_000; // 15s cache to avoid rate limits
+
+function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 
 app.get('/api/live-prices', async (_req, res) => {
   try {
@@ -108,15 +110,15 @@ app.get('/api/live-prices', async (_req, res) => {
       return;
     }
 
-    // Fetch real prices from OnchainOS
+    // Fetch real prices SEQUENTIALLY to avoid rate limits
     const NATIVE = config.NATIVE_TOKEN_ADDRESS;
     const USDC_XLAYER = config.USDC_ADDRESS;
     const USDC_ETH = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
 
-    const [xlayerPrice, ethPrice] = await Promise.all([
-      getPrice('196', NATIVE, USDC_XLAYER).catch(() => null),
-      getPrice('1', NATIVE, USDC_ETH).catch(() => null),
-    ]);
+    const xlayerPrice = await getPrice('196', NATIVE, USDC_XLAYER).catch(() => null);
+    await sleep(1500);
+    const ethPrice = await getPrice('1', NATIVE, USDC_ETH).catch(() => null);
+    await sleep(1500);
 
     // Fetch a quote for route info
     let route = 'PotatoSwap';
@@ -228,10 +230,16 @@ process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 
 // ── Start ──
+const ENABLE_PIPELINE = process.env.ENABLE_PIPELINE === 'true';
+
 httpServer.listen(config.ORCHESTRATOR_WS_PORT, () => {
   logInfo('orchestrator', `Orchestrator listening on port ${config.ORCHESTRATOR_WS_PORT} (HTTP + WebSocket)`);
-  startPipeline().catch((err) => {
-    logError('orchestrator', 'Failed to start pipeline', err);
-    process.exit(1);
-  });
+  if (ENABLE_PIPELINE) {
+    startPipeline().catch((err) => {
+      logError('orchestrator', 'Failed to start pipeline', err);
+      process.exit(1);
+    });
+  } else {
+    logInfo('orchestrator', 'Pipeline disabled. API-only mode. Set ENABLE_PIPELINE=true to enable.');
+  }
 });
