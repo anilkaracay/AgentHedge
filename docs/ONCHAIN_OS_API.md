@@ -1,21 +1,45 @@
 # OnchainOS API Reference
 
-## API Availability (Verified March 2026)
+## API Availability — 5 Modules, 10+ Endpoints (Verified March 2026)
 
-| Endpoint | Status | Notes |
-|---|---|---|
-| `GET /api/v6/dex/aggregator/quote` | **WORKING** | Price oracle + swap routing |
-| `GET /api/v6/dex/aggregator/approve` | **WORKING** | Token approvals |
-| `GET /api/v6/dex/aggregator/swap` | **WORKING** | Swap calldata |
-| `GET /api/v6/dex/market/price-info` | **NOT AVAILABLE** | Use aggregator/quote instead |
-| `GET /api/v6/dex/market/trades` | **NOT AVAILABLE** | — |
-| `GET /api/v6/dex/market/candles` | **NOT AVAILABLE** | — |
-| `GET /api/v6/dex/market/token-list` | **NOT AVAILABLE** | — |
-| `GET /api/v6/wallet/asset/*` | **NOT AVAILABLE** | Use ethers.js RPC instead |
+AgentHedge integrates 5 OnchainOS API modules across all 4 agents.
 
-**Price Oracle Workaround**: We use `aggregator/quote` with a small amount (0.001 ETH) to derive token prices. This is implemented in `shared/onchainOS.ts` as `getPrice()`.
+### Module 1: DEX Swap
 
-**Portfolio Monitoring Workaround**: We use ethers.js `provider.getBalance()` and ERC20 `balanceOf()` to read balances directly from the X Layer RPC.
+| Endpoint | Method | Agent | Purpose |
+|---|---|---|---|
+| `/api/v6/dex/aggregator/quote` | GET | Scout, Analyst | Swap routing and price quotes |
+| `/api/v6/dex/aggregator/approve` | GET | Executor | Token approval calldata |
+| `/api/v6/dex/aggregator/swap` | GET | Executor | Swap transaction calldata |
+
+### Module 2: Market
+
+| Endpoint | Method | Agent | Purpose |
+|---|---|---|---|
+| `/api/v6/dex/index/current-price` | POST | Scout | Aggregated index prices |
+| `/api/v6/dex/market/candles` | GET | Analyst | OHLCV candlestick data |
+| `/api/v6/dex/market/trades` | GET | Scout | Recent DEX trade history |
+
+### Module 3: Balance
+
+| Endpoint | Method | Agent | Purpose |
+|---|---|---|---|
+| `/api/v6/dex/balance/total-value-by-address` | GET | Treasury | Portfolio USD value |
+| `/api/v6/dex/balance/all-token-balances-by-address` | GET | Treasury | Token balances with metadata |
+
+### Module 4: Gateway
+
+| Endpoint | Method | Agent | Purpose |
+|---|---|---|---|
+| `/api/v6/dex/pre-transaction/gas-price` | GET | Executor | Gas price estimation |
+
+### Module 5: Portfolio
+
+| Endpoint | Method | Agent | Purpose |
+|---|---|---|---|
+| `/api/v6/dex/market/portfolio/overview` | GET | Treasury | Wallet PnL analytics |
+
+**Note on parameter naming**: Market API uses POST for price endpoints (not GET). Balance API is under `/dex/balance/` (not `/wallet/`). The `chains` parameter is used instead of `chainIndex` for balance queries. Token addresses must be lowercase.
 
 ## Base URL
 

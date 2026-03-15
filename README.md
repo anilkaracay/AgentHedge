@@ -177,19 +177,24 @@ The x402 model also enables agent replaceability. If a better Scout agent appear
 
 ## OnchainOS Integration
 
-### Endpoints Used
+### 5 Modules, 10+ Endpoints
 
-| API | Endpoint | Method | Agent | Purpose |
-|-----|----------|--------|-------|---------|
-| DEX Aggregator | `/api/v6/dex/aggregator/quote` | GET | Scout, Analyst, Executor, Treasury | Price oracle (via small quote), swap routing |
-| DEX Aggregator | `/api/v6/dex/aggregator/approve` | GET | Executor | ERC20 token approval calldata |
-| DEX Aggregator | `/api/v6/dex/aggregator/swap` | GET | Executor | Swap transaction calldata |
+| Module | Endpoint | Method | Agent | Purpose |
+|--------|----------|--------|-------|---------|
+| DEX Swap | `/api/v6/dex/aggregator/quote` | GET | Scout, Analyst | Swap routing and price quotes |
+| DEX Swap | `/api/v6/dex/aggregator/approve` | GET | Executor | Token approval calldata |
+| DEX Swap | `/api/v6/dex/aggregator/swap` | GET | Executor | Swap transaction calldata |
+| Market | `/api/v6/dex/index/current-price` | POST | Scout | Aggregated index prices |
+| Market | `/api/v6/dex/market/candles` | GET | Analyst | OHLCV candlestick data |
+| Market | `/api/v6/dex/market/trades` | GET | Scout | Recent DEX trade history |
+| Balance | `/api/v6/dex/balance/total-value-by-address` | GET | Treasury | Portfolio USD value |
+| Balance | `/api/v6/dex/balance/all-token-balances-by-address` | GET | Treasury | Token balances with metadata |
+| Gateway | `/api/v6/dex/pre-transaction/gas-price` | GET | Executor | Gas price estimation |
+| Portfolio | `/api/v6/dex/market/portfolio/overview` | GET | Treasury | Wallet PnL analytics |
 
-All requests are authenticated with HMAC-SHA256 signed headers per the OKX Developer Portal specification. The signing string is `timestamp + method + requestPath + queryString`, hashed with the project's secret key. Implementation: `packages/shared/src/onchainOS.ts`.
+### Authentication
 
-### Price Oracle via Aggregator
-
-Since the OnchainOS Market API endpoints (`price-info`, `trades`, `candles`, `token-list`) are not available in the current API surface, AgentHedge derives token prices by quoting a small swap (0.001 tokens) via `aggregator/quote` and computing `toTokenAmount / fromTokenAmount` adjusted for decimal differences. This is implemented as `getPrice()` in `packages/shared/src/onchainOS.ts` and used by Scout for cross-chain price comparison and by Treasury for portfolio valuation.
+All requests are authenticated with HMAC-SHA256 signed headers per the OKX Developer Portal specification. The signing string is `timestamp + method + requestPath + queryOrBody`, hashed with the project's secret key. POST endpoints sign the JSON body instead of query string. Implementation: `packages/shared/src/onchainOS.ts`.
 
 ---
 
