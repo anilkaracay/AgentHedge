@@ -34,8 +34,8 @@ export {
 } from './registry.js';
 export type { OnChainAgent } from './registry.js';
 export { AgentBase } from './AgentBase.js';
-export { estimateTradeCosts, calculateMinProfitableSize, getCostBreakdown, formatProfitReport, FEE_STRUCTURE } from './profitCalculator.js';
-export type { TradeCosts, CostBreakdown, TradeSize } from './profitCalculator.js';
+export { estimateTradeCosts, calculateMinProfitableSize, getCostBreakdown, formatProfitReport, getFeeTierInfo, FEE_STRUCTURE } from './profitCalculator.js';
+export type { TradeCosts, CostBreakdown, TradeSize, FeeTier } from './profitCalculator.js';
 export { placeCEXOrder, getCEXBalance, getCEXOrderStatus } from './cexTrading.js';
 export type { CEXOrderParams, CEXOrderResult } from './cexTrading.js';
 export { findOptimalTradeSize } from './liquidityAnalyzer.js';

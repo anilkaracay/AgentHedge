@@ -91,8 +91,8 @@ const VENUE_PROFILES: VenueLatencyProfile[] = [
 export function applyMarketMicrostructure(scan: MultiVenueScan): MultiVenueScan {
   if (!isDemoMode()) return scan;
 
-  // Base market movement: random walk ±0.3%
-  const baseMovement = (Math.random() - 0.5) * 0.006;
+  // Base market movement: random walk ±0.4% (normal crypto market activity)
+  const baseMovement = (Math.random() - 0.5) * 0.008;
 
   const adjustedVenues = scan.venues.map(venue => {
     const profile = VENUE_PROFILES.find(p => p.venue === venue.venue);
