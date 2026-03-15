@@ -51,7 +51,7 @@ export function useDashboardEvents() {
   const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
-    const socket = io('http://localhost:3005', {
+    const socket = io('http://localhost:4005', {
       transports: ['websocket', 'polling'],
     });
     socketRef.current = socket;

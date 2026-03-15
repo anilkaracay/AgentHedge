@@ -7,6 +7,7 @@ import { Server } from 'socket.io';
 import { config, logInfo, logError, eventBus, getPrice, getSwapQuote } from '@agenthedge/shared';
 import type { DashboardEvent } from '@agenthedge/shared';
 import { runArbitrageCycle } from './pipeline.js';
+import { startAllAgents } from './agents.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CYCLE_INTERVAL_MS = config.SCOUT_POLL_INTERVAL * 3; // ~15s between cycles
@@ -237,16 +238,18 @@ process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 
 // ── Start ──
-const ENABLE_PIPELINE = process.env.ENABLE_PIPELINE === 'true';
+httpServer.listen(config.ORCHESTRATOR_WS_PORT, async () => {
+  logInfo('orchestrator', `Orchestrator listening on port ${config.ORCHESTRATOR_WS_PORT} (HTTP + WebSocket + Landing Page)`);
 
-httpServer.listen(config.ORCHESTRATOR_WS_PORT, () => {
-  logInfo('orchestrator', `Orchestrator listening on port ${config.ORCHESTRATOR_WS_PORT} (HTTP + WebSocket)`);
-  if (ENABLE_PIPELINE) {
-    startPipeline().catch((err) => {
-      logError('orchestrator', 'Failed to start pipeline', err);
-      process.exit(1);
-    });
-  } else {
-    logInfo('orchestrator', 'Pipeline disabled. API-only mode. Set ENABLE_PIPELINE=true to enable.');
+  // Start all 4 agents in-process
+  try {
+    await startAllAgents();
+  } catch (err) {
+    logError('orchestrator', 'Failed to start agents', err);
   }
+
+  // Start pipeline loop
+  startPipeline().catch((err) => {
+    logError('orchestrator', 'Failed to start pipeline', err);
+  });
 });
