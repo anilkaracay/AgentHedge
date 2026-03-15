@@ -6,12 +6,18 @@
     "packages/agents/*"
   ],
   "scripts": {
-    "build": "npm run build --workspaces",
-    "dev": "npm run dev --workspaces --if-present",
+    "build": "npm run build:shared && npm run build --workspaces --if-present",
+    "build:shared": "npm run build -w @agenthedge/shared",
+    "test": "cd packages/contracts && npx hardhat test",
+    "dev:agents": "concurrently -n scout,analyst,executor,treasury -c green,blue,yellow,magenta \"npm run start -w @agenthedge/scout\" \"npm run start -w @agenthedge/analyst\" \"npm run start -w @agenthedge/executor\" \"npm run start -w @agenthedge/treasury\"",
+    "dev:orchestrator": "npm run start -w @agenthedge/orchestrator",
+    "dev:dashboard": "npm run dev -w @agenthedge/dashboard",
+    "dev:all": "concurrently -n agents,orchestrator,dashboard -c cyan,yellow,magenta \"npm run dev:agents\" \"npm run dev:orchestrator\" \"npm run dev:dashboard\"",
     "deploy:contract": "cd packages/contracts && npx hardhat run scripts/deploy.ts --network xlayer_testnet",
-    "start:agents": "concurrently \"npm run start -w @agenthedge/scout\" \"npm run start -w @agenthedge/analyst\" \"npm run start -w @agenthedge/executor\" \"npm run start -w @agenthedge/treasury\"",
-    "start:orchestrator": "npm run start -w @agenthedge/orchestrator",
-    "start:dashboard": "npm run dev -w @agenthedge/dashboard"
+    "deploy:mainnet": "cd packages/contracts && npx hardhat run scripts/deploy.ts --network xlayer",
+    "start:agents": "npm run dev:agents",
+    "start:orchestrator": "npm run dev:orchestrator",
+    "start:dashboard": "npm run dev:dashboard"
   },
   "devDependencies": {
     "concurrently": "^8.0.0",
