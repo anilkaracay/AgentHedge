@@ -30,6 +30,29 @@ const io = new Server(httpServer, {
 
 io.on('connection', (socket) => {
   logInfo('orchestrator', `Dashboard connected: ${socket.id}`);
+
+  // Send current state to newly connected dashboard
+  for (const agent of ['scout', 'analyst', 'executor', 'treasury']) {
+    socket.emit('dashboard_event', {
+      type: 'agent_registered',
+      data: { agentId: agent, role: agent },
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  // Send current portfolio
+  if (liveState.treasury.portfolio > 0) {
+    socket.emit('dashboard_event', {
+      type: 'portfolio_update',
+      data: {
+        totalValueUSD: liveState.treasury.portfolio,
+        tokenBalances: [], dailyPnL: liveState.treasury.dailyPnl,
+        dailyPnLPercent: 0, circuitBreakerActive: false,
+      },
+      timestamp: new Date().toISOString(),
+    });
+  }
+
   socket.on('disconnect', () => {
     logInfo('orchestrator', `Dashboard disconnected: ${socket.id}`);
   });
@@ -202,10 +225,45 @@ app.get('/api/demo-mode', (_req, res) => {
   res.json({ demoMode: process.env.DEMO_MODE === 'true' });
 });
 
-app.post('/api/demo-mode', (req, res) => {
+app.post('/api/demo-mode', async (req, res) => {
   const { demoMode } = req.body as { demoMode: boolean };
   process.env.DEMO_MODE = demoMode ? 'true' : 'false';
   logInfo('orchestrator', `Demo mode ${demoMode ? 'ENABLED' : 'DISABLED'}`);
+
+  // Immediately refresh portfolio with new mode so dashboard updates
+  try {
+    if (!demoMode) {
+      // Real mode: fetch from OnchainOS Balance API
+      const { getTotalValue, getTokenBalances } = await import('@agenthedge/shared');
+      const ethers = await import('ethers');
+      const wallet = new ethers.Wallet(config.SCOUT_PK); // any wallet to get treasury address
+      const treasuryWallet = new ethers.Wallet(process.env.TREASURY_PK ?? '');
+      const totalResult = await getTotalValue('196', treasuryWallet.address);
+      const balances = await getTokenBalances('196', treasuryWallet.address);
+      const portfolioData = {
+        totalValueUSD: parseFloat(totalResult.totalValue.toFixed(4)),
+        tokenBalances: balances.map((b: any) => ({ token: b.symbol, balance: b.balance, valueUSD: parseFloat(b.balance) * parseFloat(b.tokenPrice) })),
+        dailyPnL: 0, dailyPnLPercent: 0, circuitBreakerActive: false,
+      };
+      eventBus.emitDashboardEvent({ type: 'portfolio_update', data: portfolioData, timestamp: new Date().toISOString() });
+    } else {
+      // Demo mode: emit demo portfolio
+      const { getDemoPortfolio } = await import('@agenthedge/shared');
+      const dp = getDemoPortfolio();
+      const portfolioData = {
+        totalValueUSD: dp.totalCapital,
+        tokenBalances: [
+          { token: 'OKB', balance: dp.totalOKB.toFixed(2), valueUSD: dp.totalOKB * 96 },
+          { token: 'USDT', balance: dp.totalUSDT.toFixed(2), valueUSD: dp.totalUSDT },
+        ],
+        dailyPnL: dp.sessionPnL, dailyPnLPercent: 0, circuitBreakerActive: false,
+      };
+      eventBus.emitDashboardEvent({ type: 'portfolio_update', data: portfolioData, timestamp: new Date().toISOString() });
+    }
+  } catch (err) {
+    logError('orchestrator', 'Failed to refresh portfolio after mode switch', err);
+  }
+
   res.json({ demoMode: process.env.DEMO_MODE === 'true' });
 });
 
