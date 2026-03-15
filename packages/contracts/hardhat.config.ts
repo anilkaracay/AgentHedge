@@ -18,7 +18,7 @@ const config: HardhatUserConfig = {
     },
     xlayer_testnet: {
       url: 'https://testrpc.xlayer.tech',
-      chainId: 195,
+      chainId: 1952,
       accounts: process.env.DEPLOYER_PK ? [process.env.DEPLOYER_PK] : [],
     },
   },
