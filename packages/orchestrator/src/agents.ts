@@ -8,6 +8,8 @@ import { v4 as uuidv4 } from 'uuid';
 import {
   config, logInfo, logError, eventBus,
   getPrice, getSwapQuote, scanAllVenues,
+  getIndexPrice, getCandles, getRecentTrades,
+  getTotalValue, getTokenBalances, getGasPrice, getPortfolioOverview,
   estimateTradeCosts, calculateMinProfitableSize, formatProfitReport,
   TRACKED_TOKENS, USDC_XLAYER,
   createX402Middleware, callPaidEndpoint,
@@ -176,9 +178,7 @@ async function startExecutor(): Promise<void> {
 }
 
 async function startTreasury(): Promise<void> {
-  const provider = new ethers.JsonRpcProvider(config.XLAYER_RPC);
-  const wallet = new ethers.Wallet(config.TREASURY_PK, provider);
-  const ERC20_ABI = ['function balanceOf(address) view returns (uint256)'];
+  const wallet = new ethers.Wallet(config.TREASURY_PK);
 
   const app = express();
   app.use(express.json());
@@ -190,25 +190,29 @@ async function startTreasury(): Promise<void> {
 
   async function refreshPortfolio() {
     try {
-      const nativeBal = await provider.getBalance(wallet.address);
-      const nativeHuman = parseFloat(ethers.formatEther(nativeBal));
-      let usdcBal = 0;
-      try {
-        const usdc = new ethers.Contract(USDC_XLAYER, ERC20_ABI, provider);
-        usdcBal = parseFloat(ethers.formatUnits(await usdc.balanceOf(wallet.address), 6));
-      } catch { /* skip */ }
-      let nativePrice = 0;
-      try { nativePrice = (await getPrice('196', NATIVE, USDC_XLAYER)).price; } catch { /* skip */ }
-      const totalValue = nativeHuman * nativePrice + usdcBal;
+      // OnchainOS Balance API — real portfolio data
+      const totalResult = await getTotalValue('196', wallet.address);
+      const balances = await getTokenBalances('196', wallet.address);
+
+      const tokenBalances = balances.map(b => ({
+        token: b.symbol,
+        balance: b.balance,
+        valueUSD: parseFloat(b.balance) * parseFloat(b.tokenPrice),
+      }));
+
+      // OnchainOS Portfolio API — PnL analytics
+      let pnlData = { realizedPnlUsd: '0' };
+      try { pnlData = await getPortfolioOverview('196', wallet.address); } catch { /* skip */ }
+
       portfolio = {
-        totalValueUSD: parseFloat(totalValue.toFixed(4)),
-        tokenBalances: [
-          { token: 'OKB', balance: nativeHuman.toFixed(6), valueUSD: parseFloat((nativeHuman * nativePrice).toFixed(4)) },
-          { token: 'USDC', balance: usdcBal.toFixed(6), valueUSD: usdcBal },
-        ],
-        dailyPnL: 0, dailyPnLPercent: 0, circuitBreakerActive: false,
+        totalValueUSD: parseFloat(totalResult.totalValue.toFixed(4)),
+        tokenBalances,
+        dailyPnL: parseFloat(pnlData.realizedPnlUsd || '0'),
+        dailyPnLPercent: 0,
+        circuitBreakerActive: false,
       };
-      logInfo('treasury', `Portfolio: $${totalValue.toFixed(2)}`);
+
+      logInfo('treasury', `Portfolio: $${totalResult.totalValue.toFixed(2)} (${balances.length} tokens via OnchainOS Balance API)`);
       eventBus.emitDashboardEvent({ type: 'portfolio_update', data: portfolio, timestamp: new Date().toISOString() });
     } catch (err) {
       logError('treasury', 'Portfolio refresh failed', err);

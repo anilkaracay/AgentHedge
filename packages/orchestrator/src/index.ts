@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import express from 'express';
 import cors from 'cors';
 import { Server } from 'socket.io';
-import { config, logInfo, logError, eventBus, scanAllVenues, TRACKED_TOKENS } from '@agenthedge/shared';
+import { config, logInfo, logError, eventBus, scanAllVenues, getGasPrice, TRACKED_TOKENS } from '@agenthedge/shared';
 import type { DashboardEvent } from '@agenthedge/shared';
 import { runArbitrageCycle } from './pipeline.js';
 import { startAllAgents } from './agents.js';
