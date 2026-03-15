@@ -165,9 +165,10 @@ footer .footer-links a:hover{color:var(--text)}
     </div>
 
     <div class="terminal fade-in" id="terminal">
-      <div class="t-row" id="token-rows"></div>
-      <div class="t-row"><span class="t-agent">ANALYST</span><span class="t-status active">evaluating</span><span class="t-label">best : </span><span class="t-val" id="tv-best">--</span>&nbsp;&nbsp;&nbsp;<span class="t-label">spread : </span><span class="t-val accent" id="tv-spread">--</span>&nbsp;&nbsp;&nbsp;<span class="t-label">net_profit : </span><span class="t-val accent" id="tv-profit">--</span>&nbsp;&nbsp;&nbsp;<span class="t-label">action : </span><span class="t-val accent" id="tv-action">IDLE</span></div>
-      <div class="t-row"><span class="t-agent">EXECUTOR</span><span class="t-status scanning">pending</span><span class="t-label">route : </span><span class="t-val" id="tv-route">--</span>&nbsp;&nbsp;&nbsp;<span class="t-label">slippage : </span><span class="t-val" id="tv-slip">--</span>&nbsp;&nbsp;&nbsp;<span class="t-label">gas : </span><span class="t-val accent">$0.00</span></div>
+      <div id="venue-rows"></div>
+      <div class="t-row" id="spread-row" style="margin-top:4px;border-top:1px solid #27272a;padding-top:4px"></div>
+      <div class="t-row"><span class="t-agent">ANALYST</span><span class="t-status active">evaluating</span><span class="t-label">spread : </span><span class="t-val accent" id="tv-spread">--</span>&nbsp;&nbsp;&nbsp;<span class="t-label">net_profit : </span><span class="t-val accent" id="tv-profit">--</span>&nbsp;&nbsp;&nbsp;<span class="t-label">action : </span><span class="t-val accent" id="tv-action">IDLE</span></div>
+      <div class="t-row"><span class="t-agent">EXECUTOR</span><span class="t-status scanning">pending</span><span class="t-label">route : </span><span class="t-val" id="tv-route">--</span>&nbsp;&nbsp;&nbsp;<span class="t-label">gas : </span><span class="t-val accent">$0.00</span></div>
       <div class="t-row"><span class="t-agent">TREASURY</span><span class="t-status active">active</span><span class="t-label">portfolio : </span><span class="t-val" id="tv-port">--</span>&nbsp;&nbsp;&nbsp;<span class="t-label">daily_pnl : </span><span class="t-val accent" id="tv-pnl">--</span>&nbsp;&nbsp;&nbsp;<span class="t-label">circuit : </span><span class="t-val accent">OK</span></div>
     </div>
 
@@ -372,31 +373,36 @@ async function fetchLive() {
     if (!res.ok) throw new Error('API ' + res.status);
     const d = await res.json();
 
-    // Build token rows for Scout
-    const rowsEl = document.getElementById('token-rows');
-    if (rowsEl && d.tokens && d.tokens.length > 0) {
-      rowsEl.innerHTML = d.tokens.map(function(t) {
-        const src = t.cexSource === 'okx-cex' ? 'OKX' : t.cexSource === 'binance-cex' ? 'Binance' : 'DEX';
-        return '<div style="margin-bottom:2px">' +
-          '<span class="t-agent">SCOUT</span>' +
-          '<span class="t-status scanning">scanning</span>' +
-          '<span class="t-label">' + t.symbol + '/USDC</span>&nbsp;&nbsp;&nbsp;' +
-          '<span class="t-label">DEX : </span><span class="t-val">$' + t.dexPrice.toFixed(4) + '</span>&nbsp;&nbsp;&nbsp;' +
-          '<span class="t-label">' + src + ' : </span><span class="t-val">$' + t.cexPrice.toFixed(4) + '</span>&nbsp;&nbsp;&nbsp;' +
-          '<span class="t-label">spread : </span><span class="t-val accent">' + t.spread.toFixed(4) + '%</span>' +
-          '</div>';
+    // Build venue price rows
+    const venueEl = document.getElementById('venue-rows');
+    const spreadEl = document.getElementById('spread-row');
+    if (venueEl && d.scans && d.scans.length > 0) {
+      var scan = d.scans[0]; // best token
+      var venueHtml = '<div style="margin-bottom:2px">' +
+        '<span class="t-agent">SCOUT</span>' +
+        '<span class="t-status scanning">scanning</span>' +
+        '<span class="t-label">' + scan.token + '/USDT</span>&nbsp;&nbsp;&nbsp;' +
+        '<span class="t-val">' + scan.venues.length + ' venues in ' + scan.scanDuration + 'ms</span></div>';
+      venueHtml += scan.venues.map(function(v) {
+        var tag = v.venue === scan.cheapest.venue ? ' << BUY' : v.venue === scan.mostExpensive.venue ? ' << SELL' : '';
+        var cls = tag ? ' accent' : '';
+        return '<span class="t-label" style="margin-left:84px">' + v.venue.padEnd(12,' ').replace(/ /g,'&nbsp;') + '</span>' +
+          '<span class="t-val' + cls + '">$' + v.price.toFixed(4) + '</span>' +
+          '<span class="t-label">&nbsp;(' + v.latency + 'ms)' + (tag ? '&nbsp;<span class="t-val accent">' + tag + '</span>' : '') + '</span><br>';
       }).join('');
+      venueEl.innerHTML = venueHtml;
+      if (spreadEl) {
+        spreadEl.innerHTML = '<span class="t-agent" style="width:84px;display:inline-block"></span>' +
+          '<span class="t-label">spread : </span><span class="t-val accent">$' + scan.cheapest.price.toFixed(2) + ' -> $' + scan.mostExpensive.price.toFixed(2) + ' = ' + scan.spread.toFixed(4) + '%</span>';
+      }
     }
 
-    // Analyst
-    setVal('tv-best', d.scout.bestToken);
     setVal('tv-spread', d.scout.spread.toFixed(2) + '%');
     setVal('tv-profit', '$' + Number(d.analyst.netProfit).toFixed(2));
     setVal('tv-action', d.analyst.action);
     setVal('tv-route', d.executor.route);
-    setVal('tv-slip', d.executor.slippage.toFixed(2) + '%');
     setVal('tv-port', '$' + Number(d.treasury.portfolio).toFixed(2));
-    const pnl = Number(d.treasury.dailyPnl);
+    var pnl = Number(d.treasury.dailyPnl);
     setVal('tv-pnl', (pnl >= 0 ? '+' : '') + '$' + pnl.toFixed(2));
 
     // Metrics

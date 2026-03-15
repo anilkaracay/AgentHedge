@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import express from 'express';
 import cors from 'cors';
 import { Server } from 'socket.io';
-import { config, logInfo, logError, eventBus, getPrice, getSwapQuote, getCEXPrice, TRACKED_TOKENS, USDC_XLAYER } from '@agenthedge/shared';
+import { config, logInfo, logError, eventBus, scanAllVenues, TRACKED_TOKENS } from '@agenthedge/shared';
 import type { DashboardEvent } from '@agenthedge/shared';
 import { runArbitrageCycle } from './pipeline.js';
 import { startAllAgents } from './agents.js';
@@ -118,43 +118,37 @@ app.get('/api/live-prices', async (_req, res) => {
       return;
     }
 
-    // Fetch CeDeFi prices: DEX (OnchainOS) vs CEX (OKX/Binance)
-    const tokens: { symbol: string; dexPrice: number; cexPrice: number; cexSource: string; spread: number; route: string }[] = [];
-
+    // Multi-venue simultaneous scan
+    const scans = [];
     for (const token of TRACKED_TOKENS) {
       try {
-        const dexResult = await getPrice('196', token.xlayerAddress, USDC_XLAYER, token.quoteAmount);
-        await sleep(1000);
-        const cexPoint = await getCEXPrice(token);
-        await sleep(1000);
-
-        let route = 'PotatoSwap';
-        try {
-          const quote = await getSwapQuote({
-            chainIndex: '196', fromTokenAddress: token.xlayerAddress,
-            toTokenAddress: USDC_XLAYER, amount: token.quoteAmount, slippagePercent: '0.5',
-          });
-          route = quote.dexRouterList?.[0]?.dexProtocol.dexName ?? 'Unknown';
-        } catch { /* use default */ }
-        await sleep(1000);
-
-        const spread = Math.abs(cexPoint.price - dexResult.price) / cexPoint.price * 100;
-        tokens.push({ symbol: token.symbol, dexPrice: dexResult.price, cexPrice: cexPoint.price, cexSource: cexPoint.source, spread, route });
-      } catch { /* skip token */ }
+        const scan = await scanAllVenues(token);
+        scans.push(scan);
+      } catch { /* skip */ }
     }
 
-    // Best opportunity
-    tokens.sort((a, b) => b.spread - a.spread);
-    const best = tokens[0];
+    // Best opportunity across all tokens
+    scans.sort((a, b) => b.spreadPercent - a.spreadPercent);
+    const best = scans[0];
 
     const response = {
-      tokens,
+      scans: scans.map(s => ({
+        token: s.token,
+        venues: s.venues.map(v => ({ venue: v.venue, type: v.venueType, price: v.price, latency: v.latency })),
+        cheapest: { venue: s.cheapest.venue, price: s.cheapest.price },
+        mostExpensive: { venue: s.mostExpensive.venue, price: s.mostExpensive.price },
+        spread: s.spreadPercent,
+        scanDuration: s.scanDuration,
+      })),
       scout: {
-        bestToken: best?.symbol ?? '--',
-        dexPrice: best?.dexPrice ?? 0,
-        cexPrice: best?.cexPrice ?? 0,
-        cexSource: best?.cexSource ?? '--',
-        spread: parseFloat((best?.spread ?? 0).toFixed(4)),
+        bestToken: best?.token ?? '--',
+        buyVenue: best?.cheapest.venue ?? '--',
+        buyPrice: best?.cheapest.price ?? 0,
+        sellVenue: best?.mostExpensive.venue ?? '--',
+        sellPrice: best?.mostExpensive.price ?? 0,
+        spread: best?.spreadPercent ?? 0,
+        venuesResponded: best?.venues.length ?? 0,
+        scanDuration: best?.scanDuration ?? 0,
         lastUpdate: new Date().toISOString(),
       },
       analyst: {
@@ -164,8 +158,8 @@ app.get('/api/live-prices', async (_req, res) => {
         lastUpdate: liveState.analyst.lastUpdate || new Date().toISOString(),
       },
       executor: {
-        route: best?.route ?? '--',
-        slippage: 0.12,
+        route: best?.venues.find(v => v.venueType === 'dex')?.venue ?? '--',
+        slippage: 0.1,
         gasCost: '$0.00',
         lastUpdate: new Date().toISOString(),
       },

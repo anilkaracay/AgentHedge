@@ -12,34 +12,59 @@ export interface AgentConfig {
 export interface TokenConfig {
   symbol: string;
   xlayerAddress: string;
-  cexSymbol: string;           // "ETHUSDC" for Binance, mapped to "ETH-USDC" for OKX
   decimals: number;
-  quoteAmount: string;         // base units for 1 token
+  quoteAmount: string;
 }
 
-export interface PricePoint {
-  source: string;              // "xlayer-dex" | "okx-cex" | "binance-cex" | "ethereum-dex"
+// ── Multi-Venue Price Discovery ──
+export interface VenuePrice {
+  venue: string;           // "okx" | "binance" | "gateio" | "bybit" | "kucoin" | "mexc" | "htx" | "xlayer-dex"
+  venueType: 'cex' | 'dex';
   price: number;
+  symbol: string;
+  timestamp: string;
+  latency: number;
+  available: boolean;
+}
+
+export interface MultiVenueScan {
+  token: string;
+  venues: VenuePrice[];
+  cheapest: VenuePrice;
+  mostExpensive: VenuePrice;
+  spreadPercent: number;
+  spreadAbsolute: number;
+  scanDuration: number;
   timestamp: string;
 }
 
-// ── Scout Output: CeDeFi Arbitrage ──
+// ── Scout Output: Multi-Venue Arbitrage ──
 export interface ArbitrageOpportunity {
   id: string;
-  token: string;               // symbol, e.g., "ETH"
-  tokenAddress: string;        // X Layer contract address
-  dexPrice: PricePoint;
-  cexPrice: PricePoint;
-  spreadPercent: number;       // |cex - dex| / cex * 100
-  spreadAbsolute: number;      // absolute USDC difference
-  direction: 'BUY_DEX_SELL_CEX' | 'BUY_CEX_SELL_DEX';
+  token: string;
+  tokenAddress: string;
+  buyVenue: VenuePrice;
+  sellVenue: VenuePrice;
+  allVenues: VenuePrice[];
+  spreadPercent: number;
+  spreadAbsolute: number;
+  venuesScanned: number;
+  venuesResponded: number;
+  scanDuration: number;
   confidence: number;
   timestamp: string;
   expiresAt: string;
 }
 
-// Keep OpportunitySignal as alias for backward compat in x402 endpoints
+// Backward compat alias
 export type OpportunitySignal = ArbitrageOpportunity;
+
+// Legacy compat
+export interface PricePoint {
+  source: string;
+  price: number;
+  timestamp: string;
+}
 
 // ── Analyst Output ──
 export interface ExecutionRecommendation {

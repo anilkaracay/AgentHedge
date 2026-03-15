@@ -1,9 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import {
-  getPrice,
-  getCEXPrice,
-  getSwapQuote,
-  USDC_XLAYER,
+  scanAllVenues,
   TRACKED_TOKENS,
   config,
   logInfo,
@@ -11,89 +8,59 @@ import {
 } from '@agenthedge/shared';
 import type { ArbitrageOpportunity, ExecutionRecommendation } from '@agenthedge/shared';
 
-const MIN_NET_PROFIT_USDC = 0.10; // Low threshold for demo
-const AGENT_FEES_USDC = 0.05;     // scout 0.02 + analyst 0.03
-
-function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
+const MIN_NET_PROFIT_USDC = 0.10;
+const AGENT_FEES_USDC = 0.05;
 
 export async function analyzeSignal(
   signal: ArbitrageOpportunity
 ): Promise<ExecutionRecommendation> {
-  const now = Date.now();
-  const expiresAt = new Date(signal.expiresAt).getTime();
-
-  if (now > expiresAt) {
+  if (Date.now() > new Date(signal.expiresAt).getTime()) {
     logInfo('analyst', `Signal ${signal.id} expired`);
     return buildSkip(signal, 'Signal expired');
   }
 
-  // Re-validate DEX price with fresh quote
-  let currentDexPrice: number;
-  let priceImpact = 0.1;
-  let gasFee = '0';
-  try {
-    const tokenCfg = TRACKED_TOKENS.find(t => t.symbol === signal.token);
-    if (!tokenCfg) return buildSkip(signal, `Unknown token ${signal.token}`);
+  // Re-scan all venues for fresh prices
+  const tokenCfg = TRACKED_TOKENS.find(t => t.symbol === signal.token);
+  if (!tokenCfg) return buildSkip(signal, `Unknown token ${signal.token}`);
 
-    const quote = await getSwapQuote({
-      chainIndex: '196',
-      fromTokenAddress: signal.tokenAddress,
-      toTokenAddress: USDC_XLAYER,
-      amount: tokenCfg.quoteAmount,
-      slippagePercent: '0.5',
-    });
-    const fromDec = parseInt(quote.fromToken?.decimal ?? String(tokenCfg.decimals));
-    const toDec = parseInt(quote.toToken?.decimal ?? '6');
-    currentDexPrice = (parseFloat(quote.toTokenAmount) / Math.pow(10, toDec)) /
-                      (parseFloat(quote.fromTokenAmount) / Math.pow(10, fromDec));
-    priceImpact = parseFloat(quote.priceImpactPercentage || '0.1');
-    gasFee = quote.estimateGasFee;
+  let freshScan;
+  try {
+    freshScan = await scanAllVenues(tokenCfg);
   } catch (err) {
-    logError('analyst', 'DEX re-validation failed', err);
-    return buildSkip(signal, 'DEX price re-validation failed');
+    logError('analyst', 'Re-scan failed', err);
+    return buildSkip(signal, 'Price re-validation failed');
   }
 
-  await sleep(1000);
+  const freshSpread = freshScan.spreadPercent;
 
-  // Re-validate CEX price
-  let currentCexPrice: number;
-  try {
-    const tokenCfg = TRACKED_TOKENS.find(t => t.symbol === signal.token);
-    if (!tokenCfg) return buildSkip(signal, `Unknown token ${signal.token}`);
-    const cexPoint = await getCEXPrice(tokenCfg);
-    currentCexPrice = cexPoint.price;
-  } catch (err) {
-    logError('analyst', 'CEX re-validation failed', err);
-    // Use original CEX price as fallback
-    currentCexPrice = signal.cexPrice.price;
-  }
-
-  // Recalculate spread with fresh prices
-  const freshSpread = Math.abs(currentCexPrice - currentDexPrice) / currentCexPrice * 100;
-
-  // Check if spread has narrowed significantly
-  if (freshSpread < signal.spreadPercent * 0.5) {
-    logInfo('analyst', `Spread narrowed from ${signal.spreadPercent}% to ${freshSpread.toFixed(2)}%`);
-    return buildSkip(signal, `Spread narrowed to ${freshSpread.toFixed(2)}%`);
+  // Check if spread narrowed significantly
+  if (freshSpread < signal.spreadPercent * 0.3) {
+    return buildSkip(signal, `Spread narrowed from ${signal.spreadPercent.toFixed(2)}% to ${freshSpread.toFixed(2)}%`);
   }
 
   const tradeAmountUSDC = config.MAX_TRADE_SIZE_USDC;
   const grossProfit = (freshSpread / 100) * tradeAmountUSDC;
-  const slippageCost = (Math.max(priceImpact, 0.1) / 100) * tradeAmountUSDC;
-  const netProfit = grossProfit - slippageCost - AGENT_FEES_USDC;
 
-  logInfo('analyst', `${signal.token} analysis | spread: ${freshSpread.toFixed(2)}% | gross: $${grossProfit.toFixed(2)} | slip: $${slippageCost.toFixed(2)} | net: $${netProfit.toFixed(2)}`);
+  // Costs depend on which venues are involved
+  const buyIsDEX = freshScan.cheapest.venueType === 'dex';
+  const sellIsDEX = freshScan.mostExpensive.venueType === 'dex';
+  const dexSlippage = 0.1; // ~0.1% on X Layer DEX
+  const dexCost = (buyIsDEX || sellIsDEX) ? (dexSlippage / 100) * tradeAmountUSDC : 0;
+  const netProfit = grossProfit - dexCost - AGENT_FEES_USDC;
 
-  const action = netProfit > MIN_NET_PROFIT_USDC && signal.confidence > 0.01
-    ? 'EXECUTE' as const
-    : 'SKIP' as const;
+  // Determine execution note
+  let execNote: string;
+  if (buyIsDEX && !sellIsDEX) {
+    execNote = `Buy on X Layer DEX @ $${freshScan.cheapest.price.toFixed(2)}, sell on ${freshScan.mostExpensive.venue} CEX @ $${freshScan.mostExpensive.price.toFixed(2)}`;
+  } else if (!buyIsDEX && sellIsDEX) {
+    execNote = `Buy on ${freshScan.cheapest.venue} CEX @ $${freshScan.cheapest.price.toFixed(2)}, sell on X Layer DEX @ $${freshScan.mostExpensive.price.toFixed(2)}`;
+  } else {
+    execNote = `CEX-CEX: Buy @ ${freshScan.cheapest.venue} $${freshScan.cheapest.price.toFixed(2)}, Sell @ ${freshScan.mostExpensive.venue} $${freshScan.mostExpensive.price.toFixed(2)}`;
+  }
 
-  const tokenCfg = TRACKED_TOKENS.find(t => t.symbol === signal.token);
-  const suggestedAmount = tokenCfg?.quoteAmount ?? '1000000000000000000';
+  const action = netProfit > MIN_NET_PROFIT_USDC ? 'EXECUTE' as const : 'SKIP' as const;
 
-  const reason = action === 'EXECUTE'
-    ? `CeDeFi arb: ${signal.token} spread ${freshSpread.toFixed(2)}%, net profit $${netProfit.toFixed(2)} (${signal.direction}). Theoretical — production requires CEX API for sell side.`
-    : `Net profit $${netProfit.toFixed(2)} below threshold $${MIN_NET_PROFIT_USDC}`;
+  logInfo('analyst', `${signal.token}: spread ${freshSpread.toFixed(2)}% | gross $${grossProfit.toFixed(2)} | net $${netProfit.toFixed(2)} | ${action} | ${execNote}`);
 
   return {
     id: uuidv4(),
@@ -101,27 +68,20 @@ export async function analyzeSignal(
     action,
     confidence: signal.confidence,
     estimatedProfit: parseFloat(netProfit.toFixed(4)),
-    estimatedSlippage: parseFloat(priceImpact.toFixed(4)),
-    estimatedPriceImpact: priceImpact,
-    suggestedAmount,
+    estimatedSlippage: dexSlippage,
+    estimatedPriceImpact: dexSlippage,
+    suggestedAmount: tokenCfg.quoteAmount,
     suggestedMinOutput: '0',
-    reason,
+    reason: `${execNote}. Net $${netProfit.toFixed(2)} (${freshScan.venues.length} venues, ${freshScan.scanDuration}ms scan)`,
     timestamp: new Date().toISOString(),
   };
 }
 
 function buildSkip(signal: ArbitrageOpportunity, reason: string): ExecutionRecommendation {
   return {
-    id: uuidv4(),
-    signalId: signal.id,
-    action: 'SKIP',
-    confidence: 0,
-    estimatedProfit: 0,
-    estimatedSlippage: 0,
-    estimatedPriceImpact: 0,
-    suggestedAmount: '0',
-    suggestedMinOutput: '0',
-    reason,
+    id: uuidv4(), signalId: signal.id, action: 'SKIP', confidence: 0,
+    estimatedProfit: 0, estimatedSlippage: 0, estimatedPriceImpact: 0,
+    suggestedAmount: '0', suggestedMinOutput: '0', reason,
     timestamp: new Date().toISOString(),
   };
 }

@@ -6,14 +6,12 @@ export const TRACKED_TOKENS: TokenConfig[] = [
   {
     symbol: 'OKB',
     xlayerAddress: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE', // Native token on X Layer
-    cexSymbol: 'OKBUSDT',  // OKX lists OKB-USDT
     decimals: 18,
     quoteAmount: '1000000000000000000', // 1 OKB
   },
   {
     symbol: 'USDT',
     xlayerAddress: '0x1e4a5963abfd975d8c9021ce480b42188849d41d',
-    cexSymbol: 'USDTUSDC', // Stablecoin depeg detection — uses Ethereum DEX fallback
     decimals: 6,
     quoteAmount: '1000000', // 1 USDT
   },
