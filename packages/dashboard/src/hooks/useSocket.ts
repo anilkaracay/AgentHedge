@@ -88,5 +88,21 @@ export function useDashboardEvents() {
     return () => { socket.disconnect(); };
   }, []);
 
-  return { events, portfolio, payments, trades, connected, pnlHistory };
+  const [demoMode, setDemoMode] = useState(false);
+
+  // Fetch initial demo mode state
+  useEffect(() => {
+    fetch('http://localhost:4005/api/demo-mode').then(r => r.json()).then((d: any) => setDemoMode(d.demoMode)).catch(() => {});
+  }, []);
+
+  const toggleDemoMode = () => {
+    const newMode = !demoMode;
+    fetch('http://localhost:4005/api/demo-mode', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ demoMode: newMode }),
+    }).then(() => setDemoMode(newMode)).catch(() => {});
+  };
+
+  return { events, portfolio, payments, trades, connected, pnlHistory, demoMode, toggleDemoMode };
 }

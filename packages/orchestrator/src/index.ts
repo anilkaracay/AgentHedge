@@ -197,6 +197,18 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', component: 'orchestrator', uptime: process.uptime() });
 });
 
+// ── Demo Mode Toggle ──
+app.get('/api/demo-mode', (_req, res) => {
+  res.json({ demoMode: process.env.DEMO_MODE === 'true' });
+});
+
+app.post('/api/demo-mode', (req, res) => {
+  const { demoMode } = req.body as { demoMode: boolean };
+  process.env.DEMO_MODE = demoMode ? 'true' : 'false';
+  logInfo('orchestrator', `Demo mode ${demoMode ? 'ENABLED' : 'DISABLED'}`);
+  res.json({ demoMode: process.env.DEMO_MODE === 'true' });
+});
+
 // ── Pipeline Loop ──
 let pipelineTimer: ReturnType<typeof setInterval> | null = null;
 let pipelineRunning = false;
