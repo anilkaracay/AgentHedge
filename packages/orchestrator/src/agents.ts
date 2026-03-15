@@ -24,6 +24,10 @@ const NATIVE = config.NATIVE_TOKEN_ADDRESS;
 function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 
 let latestSignal: ArbitrageOpportunity | null = null;
+const demoTradeHistory: any[] = [];
+const demoPaymentHistory: any[] = [];
+
+export function getDemoHistory() { return { trades: demoTradeHistory, payments: demoPaymentHistory }; }
 let latestRecommendation: ExecutionRecommendation | null = null;
 let portfolio: PortfolioSnapshot = {
   totalValueUSD: 0, tokenBalances: [], dailyPnL: 0, dailyPnLPercent: 0, circuitBreakerActive: false,
@@ -179,8 +183,11 @@ async function startAnalyst(): Promise<void> {
         let tradeCount = 0;
 
         // x402 payments for signal + recommendation (once per cycle)
-        eventBus.emitDashboardEvent({ type: 'x402_payment', data: { from: 'analyst', to: 'scout', amount: 0.02, purpose: 'signal_purchase' }, timestamp: now });
-        eventBus.emitDashboardEvent({ type: 'x402_payment', data: { from: 'executor', to: 'analyst', amount: 0.03, purpose: 'analysis_purchase' }, timestamp: now });
+        const p1 = { from: 'analyst', to: 'scout', amount: 0.02, purpose: 'signal_purchase', timestamp: now };
+        const p2 = { from: 'executor', to: 'analyst', amount: 0.03, purpose: 'analysis_purchase', timestamp: now };
+        demoPaymentHistory.push(p1, p2);
+        eventBus.emitDashboardEvent({ type: 'x402_payment', data: p1, timestamp: now });
+        eventBus.emitDashboardEvent({ type: 'x402_payment', data: p2, timestamp: now });
 
         // Find ALL profitable pairs: every buyVenue cheaper than every sellVenue
         for (let i = 0; i < venues.length; i++) {
@@ -208,18 +215,38 @@ async function startAnalyst(): Promise<void> {
 
             logInfo('executor', `[DEMO] #${tradeCount} BUY ${okbAmount.toFixed(1)} OKB @ ${buyV.venue} $${buyV.price.toFixed(2)} -> SELL @ ${sellV.venue} $${sellV.price.toFixed(2)} | net +$${pairNetProfit.toFixed(2)}`);
 
-            eventBus.emitDashboardEvent({
-              type: 'trade_executed',
-              data: {
-                id: uuidv4(), recommendationId: latestRecommendation.id, status: 'EXECUTED',
-                fromToken: `${signal.token} (${buyV.venue}->${sellV.venue})`, toToken: 'USDC',
-                amountIn: okbAmount.toFixed(4), amountOut: (tradeSize + pairNetProfit).toFixed(2),
-                realizedProfit: parseFloat(pairNetProfit.toFixed(4)), timestamp: now,
-              },
+            const tradeEvent = {
+              tradeId: `demo-${Date.now()}-${tradeCount}`,
+              token: signal.token,
+              buyVenue: { venue: buyV.venue, price: buyV.price, type: buyV.venueType },
+              sellVenue: { venue: sellV.venue, price: sellV.price, type: sellV.venueType },
+              size: parseFloat(okbAmount.toFixed(4)),
+              sizeUSD: tradeSize,
+              spreadPercent: parseFloat(pairSpreadPct.toFixed(4)),
+              grossProfit: parseFloat(grossProfit.toFixed(4)),
+              buyFee: parseFloat(buyCost.toFixed(4)),
+              sellFee: parseFloat((sellCost + sellSlip).toFixed(4)),
+              agentFees: 0.05,
+              transferCost: 0,
+              totalCosts: parseFloat((buyCost + sellCost + sellSlip + 0.01).toFixed(4)),
+              netProfit: parseFloat(pairNetProfit.toFixed(4)),
+              allVenues: venues.map(v => ({ venue: v.venue, price: v.price, type: v.venueType })),
+              status: 'FILLED' as const,
               timestamp: now,
-            });
+              // Legacy compat fields
+              id: uuidv4(), recommendationId: latestRecommendation.id,
+              fromToken: signal.token, toToken: 'USDC',
+              amountIn: okbAmount.toFixed(4), amountOut: (tradeSize + pairNetProfit).toFixed(2),
+              realizedProfit: parseFloat(pairNetProfit.toFixed(4)),
+            };
 
-            // x402 profit share per trade
+            // Store in history
+            demoTradeHistory.push(tradeEvent);
+            demoPaymentHistory.push(
+              { from: 'treasury', to: 'executor', amount: parseFloat((pairNetProfit * 0.10).toFixed(4)), purpose: `executor_fee (${buyV.venue}->${sellV.venue})`, timestamp: now }
+            );
+
+            eventBus.emitDashboardEvent({ type: 'trade_executed', data: tradeEvent, timestamp: now });
             eventBus.emitDashboardEvent({ type: 'x402_payment', data: { from: 'treasury', to: 'executor', amount: parseFloat((pairNetProfit * 0.10).toFixed(4)), purpose: `executor_fee (${buyV.venue}->${sellV.venue})` }, timestamp: now });
           }
         }

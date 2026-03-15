@@ -7,7 +7,7 @@ import { Server } from 'socket.io';
 import { config, logInfo, logError, eventBus, scanAllVenues, getGasPrice, TRACKED_TOKENS } from '@agenthedge/shared';
 import type { DashboardEvent } from '@agenthedge/shared';
 import { runArbitrageCycle } from './pipeline.js';
-import { startAllAgents } from './agents.js';
+import { startAllAgents, getDemoHistory } from './agents.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CYCLE_INTERVAL_MS = config.SCOUT_POLL_INTERVAL * 3; // ~15s between cycles
@@ -31,27 +31,35 @@ const io = new Server(httpServer, {
 io.on('connection', (socket) => {
   logInfo('orchestrator', `Dashboard connected: ${socket.id}`);
 
-  // Send current state to newly connected dashboard
+  // Send full session history on connect (survives F5)
+  const history = getDemoHistory();
+  const now = new Date().toISOString();
+
+  // Agent registrations
   for (const agent of ['scout', 'analyst', 'executor', 'treasury']) {
-    socket.emit('dashboard_event', {
-      type: 'agent_registered',
-      data: { agentId: agent, role: agent },
-      timestamp: new Date().toISOString(),
-    });
+    socket.emit('dashboard_event', { type: 'agent_registered', data: { agentId: agent, role: agent }, timestamp: now });
+  }
+
+  // Replay all trades
+  for (const trade of history.trades) {
+    socket.emit('dashboard_event', { type: 'trade_executed', data: trade, timestamp: trade.timestamp });
+  }
+
+  // Replay all payments
+  for (const payment of history.payments) {
+    socket.emit('dashboard_event', { type: 'x402_payment', data: payment, timestamp: payment.timestamp });
   }
 
   // Send current portfolio
   if (liveState.treasury.portfolio > 0) {
     socket.emit('dashboard_event', {
       type: 'portfolio_update',
-      data: {
-        totalValueUSD: liveState.treasury.portfolio,
-        tokenBalances: [], dailyPnL: liveState.treasury.dailyPnl,
-        dailyPnLPercent: 0, circuitBreakerActive: false,
-      },
-      timestamp: new Date().toISOString(),
+      data: { totalValueUSD: liveState.treasury.portfolio, tokenBalances: [], dailyPnL: liveState.treasury.dailyPnl, dailyPnLPercent: 0, circuitBreakerActive: false },
+      timestamp: now,
     });
   }
+
+  logInfo('orchestrator', `Synced ${history.trades.length} trades + ${history.payments.length} payments to dashboard`);
 
   socket.on('disconnect', () => {
     logInfo('orchestrator', `Dashboard disconnected: ${socket.id}`);
