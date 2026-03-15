@@ -43,7 +43,7 @@ function App() {
       {demoMode && (
         <div className="h-6 flex-shrink-0 bg-[#10b981]/10 border-b border-[#10b981]/20 flex items-center justify-center">
           <span className="font-mono text-[10px] text-[#10b981] uppercase tracking-wider">
-            Demo Mode -- Simulated $800K portfolio, real market data
+            Demo Mode -- Simulated portfolio, live prices with market microstructure simulation
           </span>
         </div>
       )}

@@ -40,5 +40,5 @@ export { placeCEXOrder, getCEXBalance, getCEXOrderStatus } from './cexTrading.js
 export type { CEXOrderParams, CEXOrderResult } from './cexTrading.js';
 export { findOptimalTradeSize } from './liquidityAnalyzer.js';
 export type { LiquidityProbe, OptimalTradeSize } from './liquidityAnalyzer.js';
-export { isDemoMode, getDemoPortfolio, updateDemoBalance, maybeInjectVolatilitySpike } from './demoMode.js';
+export { isDemoMode, getDemoPortfolio, updateDemoBalance, maybeInjectVolatilitySpike, applyMarketMicrostructure } from './demoMode.js';
 export type { VenueBalance, DemoPortfolio } from './demoMode.js';
