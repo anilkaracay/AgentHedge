@@ -1,0 +1,61 @@
+{
+  "timestamp": "2026-03-15T14:38:53.458Z",
+  "totalCandidates": 15,
+  "dexLiquidity": 3,
+  "arbitrageable": 2,
+  "tokens": [
+    {
+      "symbol": "OKB",
+      "address": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "decimals": 18,
+      "dexPrice": 95.855364,
+      "dexRoute": "Uniswap V3",
+      "cexPrices": {
+        "okx": 95.94,
+        "gateio": 95.96
+      },
+      "bestSpread": 0.1090412671946637,
+      "bestSpreadVenue": "gateio",
+      "arbitrageable": true
+    },
+    {
+      "symbol": "USDT",
+      "address": "0x1e4a5963abfd975d8c9021ce480b42188849d41d",
+      "decimals": 6,
+      "dexPrice": 1.000702,
+      "dexRoute": "CurveNG",
+      "cexPrices": {},
+      "bestSpread": 0,
+      "bestSpreadVenue": "",
+      "arbitrageable": false
+    },
+    {
+      "symbol": "DAI-2",
+      "address": "0xC5015b9d9161Dca7e18e32f6f25C4aD850731Fd4",
+      "decimals": 18,
+      "dexPrice": 0.493213,
+      "dexRoute": "DackieSwap V2",
+      "cexPrices": {
+        "okx": 0.9998,
+        "gateio": 0.99969
+      },
+      "bestSpread": 50.66883376675335,
+      "bestSpreadVenue": "okx",
+      "arbitrageable": true
+    }
+  ],
+  "recommended": [
+    {
+      "symbol": "DAI-2",
+      "address": "0xC5015b9d9161Dca7e18e32f6f25C4aD850731Fd4",
+      "decimals": 18,
+      "quoteAmount": "1000000000000000000"
+    },
+    {
+      "symbol": "OKB",
+      "address": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      "decimals": 18,
+      "quoteAmount": "1000000000000000000"
+    }
+  ]
+}
