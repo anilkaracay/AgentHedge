@@ -1,0 +1,92 @@
+import { useEffect, useState, useRef } from 'react';
+import { io, Socket } from 'socket.io-client';
+
+export interface DashboardEvent {
+  type: 'agent_registered' | 'signal_detected' | 'analysis_complete'
+    | 'trade_executed' | 'profit_distributed' | 'risk_alert'
+    | 'x402_payment' | 'cycle_complete' | 'portfolio_update';
+  data: any;
+  timestamp: string;
+}
+
+export interface PortfolioSnapshot {
+  totalValueUSD: number;
+  tokenBalances: { token: string; balance: string; valueUSD: number }[];
+  dailyPnL: number;
+  dailyPnLPercent: number;
+  circuitBreakerActive: boolean;
+}
+
+export interface X402PaymentEvent {
+  from: string;
+  to: string;
+  amount: number;
+  txHash?: string;
+  purpose: string;
+}
+
+export interface TradeResult {
+  id: string;
+  recommendationId: string;
+  status: 'EXECUTED' | 'FAILED' | 'SKIPPED';
+  txHash?: string;
+  fromToken: string;
+  toToken: string;
+  amountIn: string;
+  amountOut?: string;
+  realizedProfit?: number;
+  gasUsed?: string;
+  blockNumber?: number;
+  error?: string;
+  timestamp: string;
+}
+
+export function useDashboardEvents() {
+  const [events, setEvents] = useState<DashboardEvent[]>([]);
+  const [portfolio, setPortfolio] = useState<PortfolioSnapshot | null>(null);
+  const [payments, setPayments] = useState<(X402PaymentEvent & { timestamp: string })[]>([]);
+  const [trades, setTrades] = useState<TradeResult[]>([]);
+  const [connected, setConnected] = useState(false);
+  const [pnlHistory, setPnlHistory] = useState<{ time: string; pnl: number }[]>([]);
+  const socketRef = useRef<Socket | null>(null);
+
+  useEffect(() => {
+    const socket = io('http://localhost:3005', {
+      transports: ['websocket', 'polling'],
+    });
+    socketRef.current = socket;
+
+    socket.on('connect', () => setConnected(true));
+    socket.on('disconnect', () => setConnected(false));
+
+    socket.on('dashboard_event', (event: DashboardEvent) => {
+      setEvents(prev => [event, ...prev].slice(0, 100));
+
+      switch (event.type) {
+        case 'portfolio_update':
+          setPortfolio(event.data as PortfolioSnapshot);
+          setPnlHistory(prev => [
+            ...prev,
+            {
+              time: new Date(event.timestamp).toLocaleTimeString(),
+              pnl: (event.data as PortfolioSnapshot).dailyPnL,
+            },
+          ].slice(-30));
+          break;
+        case 'x402_payment':
+          setPayments(prev => [
+            { ...(event.data as X402PaymentEvent), timestamp: event.timestamp },
+            ...prev,
+          ].slice(0, 50));
+          break;
+        case 'trade_executed':
+          setTrades(prev => [event.data as TradeResult, ...prev].slice(0, 50));
+          break;
+      }
+    });
+
+    return () => { socket.disconnect(); };
+  }, []);
+
+  return { events, portfolio, payments, trades, connected, pnlHistory };
+}
