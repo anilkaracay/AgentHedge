@@ -14,7 +14,7 @@ import type {
 import { executeTrade } from './tradeExecutor.js';
 import { createExecutorServer } from './server.js';
 
-const NATIVE_TOKEN = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
+const NATIVE_TOKEN = config.NATIVE_TOKEN_ADDRESS;
 
 class ExecutorAgent extends AgentBase {
   private latestResult: TradeResult | null = null;

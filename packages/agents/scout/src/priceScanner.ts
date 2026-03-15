@@ -8,12 +8,9 @@ import {
 } from '@agenthedge/shared';
 import type { OpportunitySignal } from '@agenthedge/shared';
 
-// Native ETH address placeholder used by OnchainOS
-const NATIVE_TOKEN = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
-
-// X Layer = 196, Ethereum mainnet = 1 (CEX reference)
-const XLAYER_CHAIN = '196';
-const ETH_MAINNET_CHAIN = '1';
+const NATIVE_TOKEN = config.NATIVE_TOKEN_ADDRESS;
+const XLAYER_CHAIN = config.XLAYER_CHAIN_INDEX;
+const ETH_MAINNET_CHAIN = config.ETH_MAINNET_CHAIN_INDEX;
 
 export async function scanForOpportunity(): Promise<OpportunitySignal | null> {
   try {

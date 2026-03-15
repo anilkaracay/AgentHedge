@@ -9,13 +9,6 @@ import { config, logInfo, logError, eventBus } from '@agenthedge/shared';
 import type { DashboardEvent } from '@agenthedge/shared';
 import { runArbitrageCycle } from './pipeline.js';
 
-// ── Track all events for debugging ──
-const allEvents: DashboardEvent[] = [];
-eventBus.on('dashboard_event', (event: DashboardEvent) => {
-  allEvents.push(event);
-  logInfo('devStart', `[EVENT] ${event.type}`, event.data);
-});
-
 // ── WebSocket Server ──
 const httpServer = createServer();
 const io = new Server(httpServer, {
@@ -26,7 +19,11 @@ io.on('connection', (socket) => {
   logInfo('devStart', `Dashboard connected: ${socket.id}`);
 });
 
+// ── Track all events + forward to WebSocket ──
+const allEvents: DashboardEvent[] = [];
 eventBus.on('dashboard_event', (event: DashboardEvent) => {
+  allEvents.push(event);
+  logInfo('devStart', `[EVENT] ${event.type}`, event.data);
   io.emit('dashboard_event', event);
 });
 

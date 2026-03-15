@@ -4,14 +4,15 @@ import {
   getSwapQuote,
   getSwapApproval,
   getSwapCalldata,
+  config,
   logInfo,
   logError,
 } from '@agenthedge/shared';
 import type { ExecutionRecommendation, TradeResult } from '@agenthedge/shared';
 
-const NATIVE_TOKEN = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
-const XLAYER_CHAIN = '196';
-const DEFAULT_SLIPPAGE = '0.5';
+const NATIVE_TOKEN = config.NATIVE_TOKEN_ADDRESS;
+const XLAYER_CHAIN = config.XLAYER_CHAIN_INDEX;
+const DEFAULT_SLIPPAGE = config.DEFAULT_SLIPPAGE;
 
 export async function executeTrade(
   rec: ExecutionRecommendation,

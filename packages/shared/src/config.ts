@@ -62,4 +62,10 @@ export const config = {
   DAILY_LOSS_LIMIT_PCT: optionalNumEnv('DAILY_LOSS_LIMIT_PCT', 0.05),
   SCOUT_POLL_INTERVAL: optionalNumEnv('SCOUT_POLL_INTERVAL', 5000),
   PORTFOLIO_POLL_INTERVAL: optionalNumEnv('PORTFOLIO_POLL_INTERVAL', 30000),
+  DEFAULT_SLIPPAGE: optionalEnv('DEFAULT_SLIPPAGE', '0.5'),
+
+  // ── Chain Constants ──
+  XLAYER_CHAIN_INDEX: '196' as const,
+  ETH_MAINNET_CHAIN_INDEX: '1' as const,
+  NATIVE_TOKEN_ADDRESS: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE' as const,
 } as const;
