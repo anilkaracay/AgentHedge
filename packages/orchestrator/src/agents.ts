@@ -11,7 +11,7 @@ import {
   getIndexPrice, getCandles, getRecentTrades,
   getTotalValue, getTokenBalances, getGasPrice, getPortfolioOverview,
   estimateTradeCosts, calculateMinProfitableSize, formatProfitReport,
-  isDemoMode, getDemoPortfolio, updateDemoBalance, maybeInjectVolatilitySpike, FEE_STRUCTURE,
+  isDemoMode, getDemoPortfolio, updateDemoBalance, maybeInjectVolatilitySpike, FEE_STRUCTURE, findOptimalTradeSize,
   TRACKED_TOKENS, USDC_XLAYER,
   createX402Middleware, callPaidEndpoint,
 } from '@agenthedge/shared';
@@ -174,11 +174,21 @@ async function startAnalyst(): Promise<void> {
       logInfo('analyst', `${signal.token}: ${action} | net $${costs.netProfit.toFixed(3)} (${costs.netProfitPercent.toFixed(2)}%) | transfer: ${costs.transferNote}`);
       eventBus.emitDashboardEvent({ type: 'analysis_complete', data: latestRecommendation, timestamp: latestRecommendation.timestamp });
 
-      // Demo mode: execute ALL profitable venue pairs simultaneously
+      // Demo mode: execute ALL profitable venue pairs with dynamic sizing
       if (action === 'EXECUTE' && isDemoMode()) {
-        const tradeSize = parseFloat(process.env.DEMO_TRADE_SIZE ?? '10000');
         const now = new Date().toISOString();
         const venues = freshScan.venues;
+
+        // Probe DEX liquidity to find optimal trade size (REAL API call)
+        logInfo('executor', `[DEMO] Probing liquidity for ${signal.token} on X Layer DEX...`);
+        let optimalSize;
+        try {
+          optimalSize = await findOptimalTradeSize(freshOpp, 50000);
+          logInfo('executor', `[DEMO] ${optimalSize.reason}`);
+        } catch {
+          optimalSize = { sizeUSD: 10000, sizeToken: 10000 / freshScan.cheapest.price, impact: 0, reason: 'Fallback size', probes: [] };
+        }
+        const tradeSize = optimalSize.sizeUSD;
         let totalSessionProfit = 0;
         let tradeCount = 0;
 
