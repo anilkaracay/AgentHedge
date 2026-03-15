@@ -363,8 +363,8 @@ function setVal(id, val) {
   setTimeout(() => { el.textContent = val; el.style.opacity = '1'; }, 150);
 }
 
-// Live data from orchestrator API
-const API_URL = 'http://localhost:3005/api/live-prices';
+// Live data from orchestrator API (relative path — works when served by orchestrator)
+const API_URL = '/api/live-prices';
 let lastData = null;
 
 async function fetchLive() {

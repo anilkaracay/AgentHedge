@@ -1,4 +1,6 @@
 import { createServer } from 'node:http';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import express from 'express';
 import cors from 'cors';
 import { Server } from 'socket.io';
@@ -6,12 +8,17 @@ import { config, logInfo, logError, eventBus, getPrice, getSwapQuote } from '@ag
 import type { DashboardEvent } from '@agenthedge/shared';
 import { runArbitrageCycle } from './pipeline.js';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CYCLE_INTERVAL_MS = config.SCOUT_POLL_INTERVAL * 3; // ~15s between cycles
 
 // ── Express + HTTP Server ──
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// Serve landing page at root
+const landingPath = path.resolve(__dirname, '../../landing');
+app.use(express.static(landingPath));
 
 const httpServer = createServer(app);
 
