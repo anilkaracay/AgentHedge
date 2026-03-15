@@ -1,75 +1,115 @@
+import { useState, useEffect } from 'react';
 import { useDashboardEvents } from './hooks/useSocket';
 import AgentNetwork from './components/AgentNetwork';
 import PaymentStream from './components/PaymentStream';
 import TradeHistory from './components/TradeHistory';
 import RiskDashboard from './components/RiskDashboard';
-import { Activity } from 'lucide-react';
+
+const PIPELINE_STAGES = ['SCOUT', 'ANALYST', 'EXECUTOR', 'TREASURY'];
 
 function App() {
   const { events, portfolio, payments, trades, connected, pnlHistory } = useDashboardEvents();
+  const [uptime, setUptime] = useState(0);
 
-  const cycleEvents = events.filter((e) => e.type === 'cycle_complete');
-  const lastCycle = cycleEvents[0]?.data as { cycleId?: number; result?: string } | undefined;
+  useEffect(() => {
+    const t = setInterval(() => setUptime(p => p + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const cycleCount = events.filter(e => e.type === 'cycle_complete').length;
+
+  const fmt = (s: number) => {
+    const h = String(Math.floor(s / 3600)).padStart(2, '0');
+    const m = String(Math.floor((s % 3600) / 60)).padStart(2, '0');
+    const sec = String(s % 60).padStart(2, '0');
+    return `${h}:${m}:${sec}`;
+  };
+
+  // Determine pipeline state from recent events
+  const lastCycleEvents = events.slice(0, 10);
+  const pipelineState = PIPELINE_STAGES.map((stage, i) => {
+    const stageEvents: Record<string, string[]> = {
+      SCOUT: ['signal_detected'],
+      ANALYST: ['analysis_complete'],
+      EXECUTOR: ['trade_executed'],
+      TREASURY: ['profit_distributed', 'portfolio_update'],
+    };
+    const hasEvent = lastCycleEvents.some(e => stageEvents[stage]?.includes(e.type));
+    return hasEvent ? 'done' : i === 0 ? 'active' : 'pending';
+  });
 
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100">
-      {/* Header */}
-      <header className="border-b border-gray-800 px-6 py-4">
-        <div className="flex items-center justify-between max-w-[1600px] mx-auto">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-400 to-blue-500 flex items-center justify-center">
-              <Activity size={18} className="text-white" />
-            </div>
-            <div>
-              <h1 className="text-lg font-bold tracking-tight">AgentHedge</h1>
-              <p className="text-xs text-gray-500">Multi-Agent CeDeFi Arbitrage Swarm on X Layer</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4">
-            {lastCycle && (
-              <span className="text-xs text-gray-500 font-mono">
-                Cycle #{lastCycle.cycleId} • {lastCycle.result}
-              </span>
-            )}
-            <div className="flex items-center gap-2">
-              <div className={`w-2 h-2 rounded-full ${connected ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`} />
-              <span className={`text-sm font-medium ${connected ? 'text-emerald-400' : 'text-red-400'}`}>
-                {connected ? 'Live' : 'Disconnected'}
-              </span>
-            </div>
-          </div>
+    <div className="h-screen flex flex-col bg-[#09090b] text-[#fafafa] overflow-hidden">
+      {/* Top Bar */}
+      <header className="h-12 flex-shrink-0 border-b border-[#27272a] flex items-center justify-between px-4 bg-[#09090b]">
+        <span className="font-mono text-[14px] font-medium tracking-tight">AgentHedge</span>
+        <div className="flex items-center gap-1.5">
+          <div className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-[#10b981] animate-pulse-dot' : 'bg-[#ef4444]'}`} />
+          <span className="font-mono text-[11px] text-[#71717a] uppercase">
+            {connected ? 'LIVE' : 'OFFLINE'}
+          </span>
+        </div>
+        <div className="flex items-center gap-4">
+          <span className="font-mono text-[11px] text-[#71717a]">CYCLE #{cycleCount}</span>
+          <span className="font-mono text-[11px] text-[#a1a1aa]">{fmt(uptime)}</span>
         </div>
       </header>
 
-      {/* Main Grid */}
-      <main className="p-4 max-w-[1600px] mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 h-[calc(100vh-100px)]">
-          {/* Left Column - 3/5 */}
-          <div className="lg:col-span-3 flex flex-col gap-4">
-            {/* Agent Network */}
-            <div className="h-[280px]">
-              <AgentNetwork events={events} />
-            </div>
-            {/* Trade History */}
-            <div className="flex-1 min-h-0">
-              <TradeHistory trades={trades} />
+      {/* Pipeline Status Bar */}
+      <div className="h-10 flex-shrink-0 border-b border-[#27272a] flex items-center justify-center gap-0 px-4 bg-[#0a0a0a]">
+        {PIPELINE_STAGES.map((stage, i) => (
+          <div key={stage} className="flex items-center">
+            {i > 0 && (
+              <svg width="40" height="10" className="mx-1">
+                <line
+                  x1="0" y1="5" x2="40" y2="5"
+                  stroke="#27272a"
+                  strokeWidth="1"
+                  strokeDasharray="4 4"
+                  className={pipelineState[i - 1] === 'done' ? 'animate-dash' : ''}
+                />
+              </svg>
+            )}
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px]">
+                {pipelineState[i] === 'done' ? (
+                  <span className="text-[#10b981]">{'\u2713'}</span>
+                ) : pipelineState[i] === 'active' ? (
+                  <span className="text-[#10b981]">{'\u25C9'}</span>
+                ) : (
+                  <span className="text-[#71717a]">{'\u00B7'}</span>
+                )}
+              </span>
+              <span className={`font-mono text-[10px] uppercase tracking-wider ${pipelineState[i] === 'active' ? 'text-[#10b981]' : pipelineState[i] === 'done' ? 'text-[#a1a1aa]' : 'text-[#71717a]'}`}>
+                {stage}
+              </span>
             </div>
           </div>
+        ))}
+      </div>
 
-          {/* Right Column - 2/5 */}
-          <div className="lg:col-span-2 flex flex-col gap-4">
-            {/* Payment Stream */}
-            <div className="h-[280px]">
-              <PaymentStream payments={payments} />
-            </div>
-            {/* Risk Dashboard */}
-            <div className="flex-1 min-h-0">
-              <RiskDashboard portfolio={portfolio} pnlHistory={pnlHistory} />
-            </div>
+      {/* Main 3-Column Layout */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left Column: Agent Status */}
+        <div className="w-[280px] flex-shrink-0 border-r border-[#27272a] overflow-y-auto p-2">
+          <AgentNetwork events={events} />
+        </div>
+
+        {/* Center Column: Trades + Payments */}
+        <div className="flex-1 flex flex-col min-w-0">
+          <div className="flex-1 min-h-0">
+            <TradeHistory trades={trades} />
+          </div>
+          <div className="h-[200px] flex-shrink-0 border-t border-[#27272a]">
+            <PaymentStream payments={payments} />
           </div>
         </div>
-      </main>
+
+        {/* Right Column: Risk + Portfolio */}
+        <div className="w-[320px] flex-shrink-0 border-l border-[#27272a] overflow-y-auto p-2">
+          <RiskDashboard portfolio={portfolio} pnlHistory={pnlHistory} />
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,80 +1,81 @@
-import { ExternalLink } from 'lucide-react';
 import type { TradeResult } from '../hooks/useSocket';
 
 interface Props {
   trades: TradeResult[];
 }
 
-const statusIcon: Record<string, string> = {
-  EXECUTED: '\u2705',
-  FAILED: '\u274C',
-  SKIPPED: '\u23ED\uFE0F',
-};
-
 export default function TradeHistory({ trades }: Props) {
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 h-full flex flex-col">
-      <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">
-        Trade History
-      </h2>
-
+    <div className="bg-[#0a0a0a] border border-[#27272a] flex flex-col h-full">
+      <div className="px-3 py-2 border-b border-[#27272a] flex items-center justify-between">
+        <span className="font-mono text-[11px] text-[#71717a] uppercase tracking-wider">Trade History</span>
+        <span className="font-mono text-[10px] text-[#71717a]">{trades.length} trades</span>
+      </div>
       <div className="flex-1 overflow-y-auto">
-        {trades.length === 0 ? (
-          <div className="text-gray-600 text-sm text-center py-8">
-            No trades executed yet
-          </div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-gray-500 text-xs uppercase border-b border-gray-800">
-                <th className="pb-2 text-left font-medium">Time</th>
-                <th className="pb-2 text-left font-medium">Direction</th>
-                <th className="pb-2 text-right font-medium">Profit</th>
-                <th className="pb-2 text-center font-medium">Status</th>
-                <th className="pb-2 text-right font-medium">Tx</th>
+        <table className="w-full text-[11px] font-mono">
+          <thead>
+            <tr className="text-[#71717a] uppercase tracking-wider border-b border-[#27272a]">
+              <th className="text-left py-1.5 px-3 font-medium">Time</th>
+              <th className="text-left py-1.5 px-1 font-medium">Pair</th>
+              <th className="text-right py-1.5 px-1 font-medium">Amount</th>
+              <th className="text-right py-1.5 px-1 font-medium">Output</th>
+              <th className="text-right py-1.5 px-1 font-medium">Profit</th>
+              <th className="text-center py-1.5 px-1 font-medium">Status</th>
+              <th className="text-right py-1.5 px-3 font-medium">Tx</th>
+            </tr>
+          </thead>
+          <tbody>
+            {trades.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="text-center py-12 text-[#71717a] text-[12px]">
+                  Waiting for first trade...
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {trades.map((t) => {
+            ) : (
+              trades.slice(0, 20).map((t, i) => {
                 const profit = t.realizedProfit ?? 0;
-                const profitColor = profit > 0 ? 'text-emerald-400' : profit < 0 ? 'text-red-400' : 'text-gray-400';
                 return (
-                  <tr key={t.id} className="border-b border-gray-800/50 hover:bg-gray-800/30">
-                    <td className="py-2.5 text-gray-300 font-mono text-xs">
-                      {new Date(t.timestamp).toLocaleTimeString()}
+                  <tr key={t.id} className={i % 2 === 1 ? 'bg-[#0f0f0f]' : ''}>
+                    <td className="py-1.5 px-3 text-[#a1a1aa]">
+                      {new Date(t.timestamp).toLocaleTimeString('en-GB', { hour12: false })}
                     </td>
-                    <td className="py-2.5">
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-300">
-                        ETH/USDC
-                      </span>
+                    <td className="py-1.5 px-1 text-[#fafafa]">OKB/USDC</td>
+                    <td className="py-1.5 px-1 text-right text-[#a1a1aa]">
+                      {(parseFloat(t.amountIn) / 1e18).toFixed(4)}
                     </td>
-                    <td className={`py-2.5 text-right font-mono font-bold ${profitColor}`}>
-                      {profit > 0 ? '+' : ''}${profit.toFixed(2)}
+                    <td className="py-1.5 px-1 text-right text-[#a1a1aa]">
+                      {t.amountOut ? `$${(parseFloat(t.amountOut) / 1e6).toFixed(2)}` : '--'}
                     </td>
-                    <td className="py-2.5 text-center">
-                      {statusIcon[t.status] ?? t.status}
+                    <td className={`py-1.5 px-1 text-right font-medium ${profit > 0 ? 'text-[#10b981]' : profit < 0 ? 'text-[#ef4444]' : 'text-[#71717a]'}`}>
+                      {profit > 0 ? '+' : ''}{profit !== 0 ? `$${profit.toFixed(2)}` : '--'}
                     </td>
-                    <td className="py-2.5 text-right">
+                    <td className="py-1.5 px-1 text-center">
+                      {t.status === 'EXECUTED' ? (
+                        <span className="text-[#10b981]">{'\\u2713'}</span>
+                      ) : (
+                        <span className="text-[#ef4444]">{'\\u2717'}</span>
+                      )}
+                    </td>
+                    <td className="py-1.5 px-3 text-right">
                       {t.txHash ? (
                         <a
                           href={`https://www.okx.com/web3/explorer/xlayer/tx/${t.txHash}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-blue-500 hover:text-blue-400 font-mono text-xs"
+                          className="text-[#10b981] hover:underline"
                         >
-                          {t.txHash.slice(0, 6)}...
-                          <ExternalLink size={10} />
+                          {t.txHash.slice(0, 8)}...
                         </a>
                       ) : (
-                        <span className="text-gray-600 text-xs">—</span>
+                        <span className="text-[#71717a]">--</span>
                       )}
                     </td>
                   </tr>
                 );
-              })}
-            </tbody>
-          </table>
-        )}
+              })
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );
