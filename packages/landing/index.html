@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AgentHedge — Multi-Agent CeDeFi Arbitrage on X Layer</title>
+<meta name="description" content="Four specialized AI agents forming a sequential arbitrage pipeline, coordinating through x402 micropayments on X Layer.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#09090b;--surface:#0f0f12;--border:#27272a;--border-hover:#10b981;--text:#fafafa;--text-secondary:#a1a1aa;--text-muted:#71717a;--accent:#10b981;--mono:'JetBrains Mono',monospace;--serif:'Instrument Serif',Georgia,serif;--sans:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif}
+html{scroll-behavior:smooth;font-size:16px}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:var(--text-secondary);text-decoration:none;transition:color .2s}
+a:hover{color:var(--text)}
+
+/* NAV */
+nav{position:sticky;top:0;z-index:100;background:rgba(9,9,11,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 2rem;height:56px;display:flex;align-items:center;justify-content:space-between}
+.nav-mark{font-family:var(--mono);font-weight:500;font-size:.95rem;color:var(--text);letter-spacing:-.02em}
+.nav-links{display:flex;gap:1.75rem;font-size:.875rem;font-family:var(--mono);font-weight:400}
+.nav-links a{color:var(--text-muted);transition:color .2s}
+.nav-links a:hover{color:var(--text)}
+
+/* LAYOUT */
+.container{max-width:1080px;margin:0 auto;padding:0 2rem}
+section{padding:6rem 0}
+.section-label{font-family:var(--mono);font-size:.75rem;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.75rem}
+.section-heading{font-family:var(--serif);font-size:2rem;font-weight:400;color:var(--text);margin-bottom:1.5rem;line-height:1.2}
+.section-sub{color:var(--text-secondary);max-width:580px;font-size:.95rem;line-height:1.7;margin-bottom:2.5rem}
+.border-top{border-top:1px solid var(--border)}
+
+/* HERO */
+.hero{padding:7rem 0 5rem;text-align:left}
+.hero h1{font-family:var(--serif);font-size:clamp(2.2rem,5vw,3.4rem);font-weight:400;line-height:1.15;margin-bottom:1.25rem;color:var(--text)}
+.hero h1 em{font-style:italic;color:var(--accent)}
+.hero-sub{color:var(--text-secondary);font-size:1.05rem;line-height:1.7;max-width:580px;margin-bottom:2.5rem}
+
+/* TERMINAL */
+.terminal{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:1.25rem 1.5rem;font-family:var(--mono);font-size:.8rem;line-height:2;overflow-x:auto;margin-bottom:2.5rem;position:relative}
+.terminal::before{content:'LIVE';position:absolute;top:.75rem;right:1rem;font-size:.6rem;font-weight:600;color:var(--accent);letter-spacing:.1em;opacity:.7}
+.t-agent{color:var(--text-muted);display:inline-block;width:72px}
+.t-status{display:inline-block;width:88px}
+.t-status.active{color:var(--accent)}
+.t-status.scanning{color:var(--text-secondary)}
+.t-label{color:var(--text-muted)}
+.t-val{color:var(--text)}
+.t-val.accent{color:var(--accent)}
+
+/* BUTTONS */
+.btn-row{display:flex;gap:1rem;flex-wrap:wrap}
+.btn{font-family:var(--mono);font-size:.8rem;font-weight:500;padding:.65rem 1.5rem;border-radius:4px;display:inline-flex;align-items:center;gap:.5rem;transition:all .2s;cursor:pointer;text-decoration:none}
+.btn-outline{border:1px solid var(--border);color:var(--text-secondary);background:transparent}
+.btn-outline:hover{border-color:var(--text-secondary);color:var(--text)}
+.btn-primary{border:1px solid var(--accent);color:var(--bg);background:var(--accent)}
+.btn-primary:hover{opacity:.88}
+
+/* PIPELINE */
+.pipeline{display:flex;align-items:flex-start;gap:0;margin:2rem 0;overflow-x:auto;padding-bottom:1rem}
+.pipe-node{flex:1;min-width:180px;border:1px solid var(--border);padding:1.25rem;position:relative;transition:border-color .3s}
+.pipe-node:hover{border-color:var(--border-hover)}
+.pipe-node:first-child{border-radius:6px 0 0 6px}
+.pipe-node:last-child{border-radius:0 6px 6px 0}
+.pipe-name{font-family:var(--mono);font-weight:600;font-size:.85rem;margin-bottom:.35rem}
+.pipe-role{font-size:.78rem;color:var(--text-secondary);margin-bottom:.65rem;line-height:1.4}
+.pipe-api{font-family:var(--mono);font-size:.65rem;color:var(--text-muted);background:rgba(255,255,255,.04);padding:.2rem .5rem;border-radius:3px;display:inline-block}
+.pipe-arrow{display:flex;flex-direction:column;align-items:center;justify-content:center;width:64px;min-width:64px;position:relative;padding-top:.5rem}
+.pipe-arrow-line{width:100%;height:1px;background:var(--border);position:relative}
+.pipe-arrow-line::after{content:'';position:absolute;right:-1px;top:-4px;border:4px solid transparent;border-left-color:var(--border)}
+.pipe-arrow-amt{font-family:var(--mono);font-size:.6rem;color:var(--text-muted);margin-top:.35rem;white-space:nowrap}
+.pipe-dot{position:absolute;width:6px;height:6px;border-radius:50%;background:var(--accent);top:50%;margin-top:-3px;left:0;animation:pipe-flow 3s ease-in-out infinite;opacity:0}
+.pipe-arrow:nth-child(2) .pipe-dot{animation-delay:0s}
+.pipe-arrow:nth-child(4) .pipe-dot{animation-delay:1s}
+.pipe-arrow:nth-child(6) .pipe-dot{animation-delay:2s}
+@keyframes pipe-flow{0%{left:0;opacity:0}10%{opacity:1}90%{opacity:1}100%{left:100%;opacity:0}}
+.pipe-caption{text-align:center;color:var(--text-muted);font-size:.85rem;margin-top:1.5rem;font-style:italic;font-family:var(--serif)}
+
+/* AGENT CARDS */
+.agent-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.agent-card{background:var(--bg);padding:1.5rem;transition:background .2s}
+.agent-card:hover{background:var(--surface)}
+.agent-name{font-family:var(--mono);font-weight:600;font-size:.85rem;margin-bottom:.5rem}
+.agent-role{font-size:.82rem;color:var(--text-secondary);line-height:1.5;margin-bottom:1rem}
+.agent-meta{font-family:var(--mono);font-size:.7rem;color:var(--text-muted);line-height:1.9}
+.agent-meta span{color:var(--text-secondary)}
+
+/* METRICS */
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:6px;overflow:hidden;margin:2rem 0}
+.metric{background:var(--bg);padding:1.5rem;text-align:center}
+.metric-val{font-family:var(--mono);font-size:1.75rem;font-weight:600;color:var(--text);margin-bottom:.35rem}
+.metric-val.accent{color:var(--accent)}
+.metric-label{font-size:.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em}
+
+/* CONTRACT */
+.contract-addr{font-family:var(--mono);font-size:.82rem;color:var(--text-secondary);background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:.6rem 1rem;display:inline-flex;align-items:center;gap:.75rem;cursor:pointer;transition:border-color .2s;margin-bottom:2rem;word-break:break-all}
+.contract-addr:hover{border-color:var(--text-muted)}
+.copy-btn{color:var(--text-muted);font-size:.7rem;white-space:nowrap;border:1px solid var(--border);padding:.15rem .45rem;border-radius:3px}
+
+/* TX TABLE */
+.tx-table{width:100%;border-collapse:collapse;font-size:.8rem;margin-top:1.5rem}
+.tx-table th{font-family:var(--mono);font-weight:500;font-size:.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;text-align:left;padding:.5rem 0;border-bottom:1px solid var(--border)}
+.tx-table td{padding:.55rem 0;border-bottom:1px solid rgba(39,39,42,.5);color:var(--text-secondary);font-family:var(--mono);font-size:.78rem}
+.tx-table td:last-child{text-align:right}
+.tx-table a{color:var(--accent);font-size:.75rem}
+.tx-table a:hover{text-decoration:underline}
+
+/* x402 SECTION */
+.x402-grid{display:grid;grid-template-columns:1fr 1fr;gap:3rem;align-items:start}
+.x402-text{font-size:.92rem;color:var(--text-secondary);line-height:1.75}
+.x402-text p{margin-bottom:1.25rem}
+
+/* FOOTER */
+footer{border-top:1px solid var(--border);padding:2.5rem 0;text-align:center}
+footer p{font-size:.8rem;color:var(--text-muted);margin-bottom:.75rem}
+footer .footer-links{display:flex;justify-content:center;gap:1.5rem;font-family:var(--mono);font-size:.75rem}
+footer .footer-links a{color:var(--text-muted)}
+footer .footer-links a:hover{color:var(--text)}
+
+/* FADE IN */
+.fade-in{opacity:0;transform:translateY(16px);transition:opacity .6s ease,transform .6s ease}
+.fade-in.visible{opacity:1;transform:translateY(0)}
+
+/* RESPONSIVE */
+@media(max-width:768px){
+  .agent-grid{grid-template-columns:1fr 1fr}
+  .metrics{grid-template-columns:1fr 1fr}
+  .pipeline{flex-direction:column;align-items:stretch}
+  .pipe-arrow{width:100%;min-width:0;height:40px;flex-direction:row;padding:0}
+  .pipe-arrow-line{width:1px;height:100%}
+  .pipe-node{border-radius:0}
+  .pipe-node:first-child{border-radius:6px 6px 0 0}
+  .pipe-node:last-child{border-radius:0 0 6px 6px}
+  .x402-grid{grid-template-columns:1fr}
+  section{padding:4rem 0}
+  .hero{padding:4rem 0 3rem}
+}
+@media(max-width:480px){
+  .agent-grid{grid-template-columns:1fr}
+  .metrics{grid-template-columns:1fr 1fr}
+  nav{padding:0 1rem}
+  .container{padding:0 1rem}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="#" class="nav-mark">AgentHedge</a>
+  <div class="nav-links">
+    <a href="#architecture">Architecture</a>
+    <a href="#agents">Agents</a>
+    <a href="https://github.com/anilkaracay/AgentHedge" target="_blank">GitHub</a>
+    <a href="https://www.okx.com/web3/explorer/xlayer/address/0x6d62f601B8A0f57b712cc5dB60D270cBcb7aE0e6" target="_blank">Explorer</a>
+  </div>
+</nav>
+
+<div class="container">
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="fade-in">
+      <h1>Four agents. One arbitrage <em>pipeline</em>.</h1>
+      <p class="hero-sub">AgentHedge decomposes CeDeFi arbitrage into four specialized AI agents that discover, analyze, execute, and manage &mdash; coordinating through x402 micropayments on X Layer.</p>
+    </div>
+
+    <div class="terminal fade-in" id="terminal">
+      <div class="t-row"><span class="t-agent">SCOUT</span><span class="t-status scanning">scanning</span><span class="t-label">X Layer : </span><span class="t-val" id="tv-xlayer">$97.82</span>&nbsp;&nbsp;&nbsp;<span class="t-label">Ethereum : </span><span class="t-val" id="tv-eth">$2,119.54</span>&nbsp;&nbsp;&nbsp;<span class="t-label">spread : </span><span class="t-val accent" id="tv-spread">0.34%</span></div>
+      <div class="t-row"><span class="t-agent">ANALYST</span><span class="t-status active">evaluating</span><span class="t-label">confidence : </span><span class="t-val" id="tv-conf">0.82</span>&nbsp;&nbsp;&nbsp;<span class="t-label">net_profit : </span><span class="t-val accent" id="tv-profit">$1.47</span>&nbsp;&nbsp;&nbsp;<span class="t-label">action : </span><span class="t-val accent" id="tv-action">EXECUTE</span></div>
+      <div class="t-row"><span class="t-agent">EXECUTOR</span><span class="t-status scanning">pending</span><span class="t-label">route : </span><span class="t-val" id="tv-route">PotatoSwap</span>&nbsp;&nbsp;&nbsp;<span class="t-label">slippage : </span><span class="t-val" id="tv-slip">0.12%</span>&nbsp;&nbsp;&nbsp;<span class="t-label">gas : </span><span class="t-val accent">$0.00</span></div>
+      <div class="t-row"><span class="t-agent">TREASURY</span><span class="t-status active">active</span><span class="t-label">portfolio : </span><span class="t-val" id="tv-port">$4.92</span>&nbsp;&nbsp;&nbsp;<span class="t-label">daily_pnl : </span><span class="t-val accent" id="tv-pnl">+$0.31</span>&nbsp;&nbsp;&nbsp;<span class="t-label">circuit : </span><span class="t-val accent">OK</span></div>
+    </div>
+
+    <div class="btn-row fade-in">
+      <a href="https://github.com/anilkaracay/AgentHedge" target="_blank" class="btn btn-outline">View on GitHub</a>
+      <a href="https://www.okx.com/web3/explorer/xlayer/address/0x6d62f601B8A0f57b712cc5dB60D270cBcb7aE0e6" target="_blank" class="btn btn-primary">Explorer</a>
+    </div>
+  </section>
+
+  <!-- ARCHITECTURE -->
+  <section id="architecture" class="border-top">
+    <div class="fade-in">
+      <p class="section-label">System Design</p>
+      <h2 class="section-heading">Pipeline Architecture</h2>
+    </div>
+
+    <div class="pipeline fade-in">
+      <div class="pipe-node">
+        <div class="pipe-name">SCOUT</div>
+        <div class="pipe-role">Opportunity detection via cross-chain price comparison</div>
+        <span class="pipe-api">aggregator/quote</span>
+      </div>
+      <div class="pipe-arrow">
+        <div class="pipe-arrow-line"><div class="pipe-dot"></div></div>
+        <div class="pipe-arrow-amt">0.02 USDC</div>
+      </div>
+      <div class="pipe-node">
+        <div class="pipe-name">ANALYST</div>
+        <div class="pipe-role">Profitability validation after slippage, impact, and fees</div>
+        <span class="pipe-api">aggregator/quote</span>
+      </div>
+      <div class="pipe-arrow">
+        <div class="pipe-arrow-line"><div class="pipe-dot"></div></div>
+        <div class="pipe-arrow-amt">0.03 USDC</div>
+      </div>
+      <div class="pipe-node">
+        <div class="pipe-name">EXECUTOR</div>
+        <div class="pipe-role">On-chain trade execution via DEX aggregator pipeline</div>
+        <span class="pipe-api">quote / approve / swap</span>
+      </div>
+      <div class="pipe-arrow">
+        <div class="pipe-arrow-line"><div class="pipe-dot"></div></div>
+        <div class="pipe-arrow-amt">profit share</div>
+      </div>
+      <div class="pipe-node">
+        <div class="pipe-name">TREASURY</div>
+        <div class="pipe-role">Capital allocation, risk limits, circuit breaker</div>
+        <span class="pipe-api">ethers.js RPC</span>
+      </div>
+    </div>
+    <p class="pipe-caption fade-in">Every arrow is an x402 micropayment. Every trade is an on-chain transaction.</p>
+  </section>
+
+  <!-- AGENTS -->
+  <section id="agents" class="border-top">
+    <div class="fade-in">
+      <p class="section-label">Agent Swarm</p>
+      <h2 class="section-heading">Four Specialized Agents</h2>
+    </div>
+
+    <div class="agent-grid fade-in">
+      <div class="agent-card">
+        <div class="agent-name">SCOUT</div>
+        <div class="agent-role">Quotes the same token on X Layer and Ethereum simultaneously, detecting cross-chain price spreads above 0.3%.</div>
+        <div class="agent-meta">
+          Sells <span>signal @ 0.02 USDC</span><br>
+          Pays <span>--</span><br>
+          Port <span>3001</span>
+        </div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-name">ANALYST</div>
+        <div class="agent-role">Purchases Scout signals, validates freshness, re-quotes current prices, calculates net profit after all costs.</div>
+        <div class="agent-meta">
+          Sells <span>recommendation @ 0.03 USDC</span><br>
+          Pays <span>Scout 0.02 USDC</span><br>
+          Port <span>3002</span>
+        </div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-name">EXECUTOR</div>
+        <div class="agent-role">Runs the full quote, approve, swap pipeline through OnchainOS DEX Aggregator with slippage protection.</div>
+        <div class="agent-meta">
+          Sells <span>--</span><br>
+          Pays <span>Analyst 0.03 USDC</span><br>
+          Port <span>3003</span>
+        </div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-name">TREASURY</div>
+        <div class="agent-role">Monitors portfolio via direct chain queries, enforces 5% daily loss limit, distributes profit via x402.</div>
+        <div class="agent-meta">
+          Sells <span>--</span><br>
+          Pays <span>Executor 10% profit</span><br>
+          Port <span>3004</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MAINNET -->
+  <section id="mainnet" class="border-top">
+    <div class="fade-in">
+      <p class="section-label">Production</p>
+      <h2 class="section-heading">Deployed on X Layer Mainnet</h2>
+    </div>
+
+    <div class="fade-in">
+      <div class="contract-addr" onclick="navigator.clipboard.writeText('0x6d62f601B8A0f57b712cc5dB60D270cBcb7aE0e6');this.querySelector('.copy-btn').textContent='copied'">
+        0x6d62f601B8A0f57b712cc5dB60D270cBcb7aE0e6
+        <span class="copy-btn">copy</span>
+      </div>
+    </div>
+
+    <div class="metrics fade-in">
+      <div class="metric"><div class="metric-val">13</div><div class="metric-label">Mainnet Transactions</div></div>
+      <div class="metric"><div class="metric-val">4</div><div class="metric-label">Registered Agents</div></div>
+      <div class="metric"><div class="metric-val">2</div><div class="metric-label">Demo Cycles</div></div>
+      <div class="metric"><div class="metric-val accent">$0.00</div><div class="metric-label">Gas Cost (x402)</div></div>
+    </div>
+
+    <div class="fade-in">
+      <table class="tx-table">
+        <thead><tr><th>#</th><th>Operation</th><th>Tx Hash</th><th></th></tr></thead>
+        <tbody>
+          <tr><td>8</td><td>Register Scout</td><td>0x6a87c5ca...95c74dd</td><td><a href="https://www.okx.com/web3/explorer/xlayer/tx/0x6a87c5caa75cece7b030e382420dbd2861ba4835c8c47735f74822a7a95c74dd" target="_blank">View</a></td></tr>
+          <tr><td>9</td><td>Register Analyst</td><td>0x4c32f645...b83d0c8</td><td><a href="https://www.okx.com/web3/explorer/xlayer/tx/0x4c32f645b9dcc7fd0c23a48a14cfcd7d43075abe54a4c90762f003d81b83d0c8" target="_blank">View</a></td></tr>
+          <tr><td>10</td><td>Register Executor</td><td>0x2230a8db...f93ab7</td><td><a href="https://www.okx.com/web3/explorer/xlayer/tx/0x2230a8dbf35e0a8a30967b404f42bc533be1a0a1193a6c2e4c69dbd0e0f93ab7" target="_blank">View</a></td></tr>
+          <tr><td>11</td><td>Register Treasury</td><td>0xb1730237...17a38f</td><td><a href="https://www.okx.com/web3/explorer/xlayer/tx/0xb1730237bbbd34f7f265cb5d477f75b990164d39263902b7695323251917a38f" target="_blank">View</a></td></tr>
+          <tr><td>12</td><td>Cycle 1: recordSuccess</td><td>0x4ea5fd0e...a2d69a</td><td><a href="https://www.okx.com/web3/explorer/xlayer/tx/0x4ea5fd0ee46bd884ea06cf839cc5cab12aa400e88513e667faa9dcf0cfa2d69a" target="_blank">View</a></td></tr>
+        </tbody>
+      </table>
+      <p style="margin-top:1rem"><a href="https://www.okx.com/web3/explorer/xlayer/address/0x6d62f601B8A0f57b712cc5dB60D270cBcb7aE0e6" target="_blank" style="color:var(--accent);font-family:var(--mono);font-size:.8rem">View all 13 transactions on X Layer Explorer &rarr;</a></p>
+    </div>
+  </section>
+
+  <!-- x402 -->
+  <section id="x402" class="border-top">
+    <div class="fade-in">
+      <p class="section-label">Payment Protocol</p>
+      <h2 class="section-heading">x402 as Coordination Mechanism</h2>
+    </div>
+
+    <div class="x402-grid fade-in">
+      <div class="x402-text">
+        <p>x402 is not an add-on to AgentHedge. It is the sole inter-agent communication protocol. Agents cannot exchange data without settling a USDC micropayment &mdash; there is no free tier, no API key, no trust assumption. Every request carries an economic signal.</p>
+        <p>This constraint is intentional. Traditional inter-service communication (REST, gRPC, message queues) carries no economic incentive. A Scout has no reason to produce accurate signals if it is not compensated per request. x402 aligns agent incentives at the protocol level.</p>
+        <p>The model also enables permissionless agent replacement. If a better Scout registers on the AgentRegistry with higher accuracy and a lower price, the Analyst will naturally route to it. No governance vote, no migration. The market decides.</p>
+      </div>
+      <div>
+        <table class="tx-table" style="margin-top:0">
+          <thead><tr><th>From</th><th>To</th><th>Amount</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td>Analyst</td><td>Scout</td><td style="color:var(--accent)">0.02 USDC</td><td>Signal purchase</td></tr>
+            <tr><td>Executor</td><td>Analyst</td><td style="color:var(--accent)">0.03 USDC</td><td>Recommendation</td></tr>
+            <tr><td>Treasury</td><td>Executor</td><td style="color:var(--accent)">10% profit</td><td>Execution fee</td></tr>
+            <tr><td>Treasury</td><td>Treasury</td><td style="color:var(--accent)">5% profit</td><td>Management fee</td></tr>
+            <tr><td>--</td><td>Pool</td><td style="color:var(--accent)">85% profit</td><td>Capital return</td></tr>
+          </tbody>
+        </table>
+        <p style="margin-top:1.25rem;font-size:.82rem;color:var(--text-muted);line-height:1.6">Fixed cost per cycle: 0.05 USDC. A cycle is profitable only when the arbitrage spread exceeds this cost plus slippage and gas.</p>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="container">
+    <p>Built by Cayvox Labs for the X Layer Onchain OS AI Hackathon, March 2026</p>
+    <div class="footer-links">
+      <a href="https://github.com/anilkaracay/AgentHedge" target="_blank">GitHub</a>
+      <a href="https://www.okx.com/web3/explorer/xlayer/address/0x6d62f601B8A0f57b712cc5dB60D270cBcb7aE0e6" target="_blank">X Layer Explorer</a>
+      <a href="https://web3.okx.com/build/dev-portal" target="_blank">OnchainOS Docs</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+// Fade-in on scroll
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); observer.unobserve(e.target); }});
+}, { threshold: 0.15 });
+document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+
+// Terminal data simulation
+const data = {
+  xlayer: [97.82, 97.91, 97.65, 98.02, 97.78, 97.85, 97.93, 97.68],
+  eth: [2119.54, 2118.87, 2121.03, 2117.62, 2120.11, 2116.91, 2119.29, 2118.45],
+  conf: [0.82, 0.79, 0.85, 0.71, 0.88, 0.76, 0.83, 0.80],
+  profit: [1.47, 1.23, 1.68, 0.94, 1.82, 1.15, 1.51, 1.33],
+  spread: [0.34, 0.28, 0.41, 0.22, 0.38, 0.31, 0.35, 0.29],
+  port: [4.92, 4.95, 4.88, 5.01, 4.97, 4.93, 5.04, 4.96],
+  pnl: [0.31, 0.34, 0.27, 0.40, 0.36, 0.32, 0.43, 0.35],
+  slip: [0.12, 0.15, 0.09, 0.18, 0.11, 0.14, 0.10, 0.16],
+  routes: ['PotatoSwap', 'Uniswap V4', 'PotatoSwap', 'Uniswap V4', 'PotatoSwap']
+};
+let idx = 0;
+
+function updateTerminal() {
+  const i = idx % data.xlayer.length;
+  const ri = idx % data.routes.length;
+  const els = {
+    'tv-xlayer': '$' + data.xlayer[i].toFixed(2),
+    'tv-eth': '$' + data.eth[i].toFixed(2),
+    'tv-spread': data.spread[i].toFixed(2) + '%',
+    'tv-conf': data.conf[i].toFixed(2),
+    'tv-profit': '$' + data.profit[i].toFixed(2),
+    'tv-action': data.profit[i] > 1.0 ? 'EXECUTE' : 'SKIP',
+    'tv-route': data.routes[ri],
+    'tv-slip': data.slip[i].toFixed(2) + '%',
+    'tv-port': '$' + data.port[i].toFixed(2),
+    'tv-pnl': '+$' + data.pnl[i].toFixed(2)
+  };
+  for (const [id, val] of Object.entries(els)) {
+    const el = document.getElementById(id);
+    if (el && el.textContent !== val) {
+      el.style.opacity = '0.3';
+      setTimeout(() => { el.textContent = val; el.style.opacity = '1'; }, 150);
+    }
+  }
+  idx++;
+}
+setInterval(updateTerminal, 3500);
+</script>
+</body>
+</html>
