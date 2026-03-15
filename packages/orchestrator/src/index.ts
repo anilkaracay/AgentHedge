@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import express from 'express';
 import cors from 'cors';
 import { Server } from 'socket.io';
-import { config, logInfo, logError, eventBus, getPrice, getSwapQuote } from '@agenthedge/shared';
+import { config, logInfo, logError, eventBus, getPrice, getSwapQuote, getCEXPrice, TRACKED_TOKENS, USDC_XLAYER } from '@agenthedge/shared';
 import type { DashboardEvent } from '@agenthedge/shared';
 import { runArbitrageCycle } from './pipeline.js';
 import { startAllAgents } from './agents.js';
@@ -118,56 +118,59 @@ app.get('/api/live-prices', async (_req, res) => {
       return;
     }
 
-    // Fetch real prices SEQUENTIALLY to avoid rate limits
-    const NATIVE = config.NATIVE_TOKEN_ADDRESS;
-    const USDC_XLAYER = config.USDC_ADDRESS;
-    const USDC_ETH = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
+    // Fetch CeDeFi prices: DEX (OnchainOS) vs CEX (OKX/Binance)
+    const tokens: { symbol: string; dexPrice: number; cexPrice: number; cexSource: string; spread: number; route: string }[] = [];
 
-    const xlayerPrice = await getPrice('196', NATIVE, USDC_XLAYER).catch(() => null);
-    await sleep(1500);
-    const ethPrice = await getPrice('1', NATIVE, USDC_ETH).catch(() => null);
-    await sleep(1500);
+    for (const token of TRACKED_TOKENS) {
+      try {
+        const dexResult = await getPrice('196', token.xlayerAddress, USDC_XLAYER, token.quoteAmount);
+        await sleep(1000);
+        const cexPoint = await getCEXPrice(token);
+        await sleep(1000);
 
-    // Fetch a quote for route info
-    let route = 'PotatoSwap';
-    let slippage = 0.12;
-    try {
-      const quote = await getSwapQuote({
-        chainIndex: '196',
-        fromTokenAddress: NATIVE,
-        toTokenAddress: USDC_XLAYER,
-        amount: '10000000000000000',
-        slippagePercent: '0.5',
-      });
-      route = quote.dexRouterList?.[0]?.dexProtocol.dexName ?? 'Unknown';
-      slippage = parseFloat(quote.priceImpactPercentage || '0.12');
-    } catch { /* use defaults */ }
+        let route = 'PotatoSwap';
+        try {
+          const quote = await getSwapQuote({
+            chainIndex: '196', fromTokenAddress: token.xlayerAddress,
+            toTokenAddress: USDC_XLAYER, amount: token.quoteAmount, slippagePercent: '0.5',
+          });
+          route = quote.dexRouterList?.[0]?.dexProtocol.dexName ?? 'Unknown';
+        } catch { /* use default */ }
+        await sleep(1000);
 
-    const xlPrice = xlayerPrice?.price ?? liveState.scout.xlayerPrice;
-    const etPrice = ethPrice?.price ?? liveState.scout.ethPrice;
-    const spread = etPrice > 0 ? Math.abs(xlPrice - etPrice) / etPrice * 100 : 0;
+        const spread = Math.abs(cexPoint.price - dexResult.price) / cexPoint.price * 100;
+        tokens.push({ symbol: token.symbol, dexPrice: dexResult.price, cexPrice: cexPoint.price, cexSource: cexPoint.source, spread, route });
+      } catch { /* skip token */ }
+    }
+
+    // Best opportunity
+    tokens.sort((a, b) => b.spread - a.spread);
+    const best = tokens[0];
 
     const response = {
+      tokens,
       scout: {
-        xlayerPrice: xlPrice,
-        ethPrice: etPrice,
-        spread: parseFloat(spread.toFixed(4)),
+        bestToken: best?.symbol ?? '--',
+        dexPrice: best?.dexPrice ?? 0,
+        cexPrice: best?.cexPrice ?? 0,
+        cexSource: best?.cexSource ?? '--',
+        spread: parseFloat((best?.spread ?? 0).toFixed(4)),
         lastUpdate: new Date().toISOString(),
       },
       analyst: {
-        confidence: liveState.analyst.confidence || 0.82,
-        netProfit: liveState.analyst.netProfit || (spread * 5).toFixed(2),
-        action: spread > 0.3 ? 'EXECUTE' : 'SKIP',
+        confidence: liveState.analyst.confidence || 0,
+        netProfit: liveState.analyst.netProfit || 0,
+        action: liveState.analyst.action || 'IDLE',
         lastUpdate: liveState.analyst.lastUpdate || new Date().toISOString(),
       },
       executor: {
-        route,
-        slippage: parseFloat(slippage.toFixed(2)),
+        route: best?.route ?? '--',
+        slippage: 0.12,
         gasCost: '$0.00',
         lastUpdate: new Date().toISOString(),
       },
       treasury: {
-        portfolio: liveState.treasury.portfolio || 4.92,
+        portfolio: liveState.treasury.portfolio || 0,
         dailyPnl: liveState.treasury.dailyPnl || 0,
         circuitBreaker: liveState.treasury.circuitBreaker || 'OK',
         lastUpdate: liveState.treasury.lastUpdate || new Date().toISOString(),

@@ -33,7 +33,7 @@ export async function runArbitrageCycle(): Promise<void> {
     }
 
     const signal = await scoutRes.json() as OpportunitySignal;
-    logInfo('orchestrator', `Signal: ${signal.tokenPair} spread ${signal.spreadPercent}%`);
+    logInfo('orchestrator', `Signal: ${signal.token}/USDC spread ${signal.spreadPercent}%`);
 
     // Step 2: Trigger Analyst analysis
     // Analyst will internally purchase the signal from Scout via x402

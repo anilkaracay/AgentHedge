@@ -1,7 +1,6 @@
 /**
- * In-process agent runtime — starts all 4 agents within the orchestrator process.
- * Each agent gets its own Express server on its own port, exactly as if running standalone.
- * The agents communicate via HTTP (x402) just like in production.
+ * In-process agent runtime — starts all 4 agents within the orchestrator.
+ * Scout compares CEX spot prices vs X Layer DEX prices (true CeDeFi arbitrage).
  */
 import express from 'express';
 import { ethers } from 'ethers';
@@ -13,36 +12,75 @@ import {
   eventBus,
   getPrice,
   getSwapQuote,
+  getCEXPrice,
+  TRACKED_TOKENS,
+  USDC_XLAYER,
   createX402Middleware,
   callPaidEndpoint,
 } from '@agenthedge/shared';
 import type {
-  OpportunitySignal,
+  ArbitrageOpportunity,
   ExecutionRecommendation,
   PortfolioSnapshot,
+  TokenConfig,
   X402RouteConfig,
 } from '@agenthedge/shared';
 
 const NATIVE = config.NATIVE_TOKEN_ADDRESS;
-const USDC_XLAYER = config.USDC_ADDRESS;
-const USDC_ETH = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
 
 function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 
 // ── Shared state ──
-let latestSignal: OpportunitySignal | null = null;
+let latestSignal: ArbitrageOpportunity | null = null;
 let latestRecommendation: ExecutionRecommendation | null = null;
 let portfolio: PortfolioSnapshot = {
   totalValueUSD: 0, tokenBalances: [], dailyPnL: 0, dailyPnLPercent: 0, circuitBreakerActive: false,
 };
 
-// ── Scout Agent ──
+// ── Scout: CeDeFi Price Scanner ──
+async function scanToken(token: TokenConfig): Promise<ArbitrageOpportunity | null> {
+  try {
+    // DEX price from X Layer via OnchainOS
+    const dexResult = await getPrice('196', token.xlayerAddress, USDC_XLAYER, token.quoteAmount);
+    await sleep(1000);
+
+    // CEX price from OKX/Binance public API
+    const cexPoint = await getCEXPrice(token);
+
+    const dexPrice = dexResult.price;
+    const cexPrice = cexPoint.price;
+    if (cexPrice === 0 || dexPrice === 0) return null;
+
+    const spreadPercent = Math.abs(cexPrice - dexPrice) / cexPrice * 100;
+    const direction = dexPrice < cexPrice ? 'BUY_DEX_SELL_CEX' as const : 'BUY_CEX_SELL_DEX' as const;
+
+    logInfo('scout', `${token.symbol}/USDC | DEX: $${dexPrice.toFixed(4)} | CEX(${cexPoint.source}): $${cexPrice.toFixed(4)} | Spread: ${spreadPercent.toFixed(4)}% | ${direction}`);
+
+    const now = new Date();
+    return {
+      id: uuidv4(),
+      token: token.symbol,
+      tokenAddress: token.xlayerAddress,
+      dexPrice: { source: 'xlayer-dex', price: dexPrice, timestamp: now.toISOString() },
+      cexPrice: cexPoint,
+      spreadPercent: parseFloat(spreadPercent.toFixed(4)),
+      spreadAbsolute: parseFloat(Math.abs(cexPrice - dexPrice).toFixed(6)),
+      direction,
+      confidence: Math.min(1, spreadPercent / 1.0),
+      timestamp: now.toISOString(),
+      expiresAt: new Date(now.getTime() + 30_000).toISOString(),
+    };
+  } catch (err) {
+    logError('scout', `Scan failed for ${token.symbol}`, err);
+    return null;
+  }
+}
+
 async function startScout(): Promise<void> {
   const wallet = new ethers.Wallet(config.SCOUT_PK);
   const app = express();
   app.use(express.json());
 
-  // x402 protected endpoint
   const routes: Record<string, X402RouteConfig> = {
     'GET /api/opportunity-signal': {
       description: 'CeDeFi arbitrage signal',
@@ -58,57 +96,31 @@ async function startScout(): Promise<void> {
   });
   app.get('/health', (_req, res) => res.json({ status: 'ok', agentId: 'scout' }));
 
-  app.listen(config.SCOUT_PORT, () => {
-    logInfo('scout', `Listening on port ${config.SCOUT_PORT}`);
-  });
+  app.listen(config.SCOUT_PORT, () => logInfo('scout', `Listening on port ${config.SCOUT_PORT}`));
 
-  // Price scanning loop
+  // Scan all tokens
   async function scan() {
-    try {
-      const xlayer = await getPrice('196', NATIVE, USDC_XLAYER);
-      await sleep(1500);
-      const eth = await getPrice('1', NATIVE, USDC_ETH);
-
-      const dexPrice = xlayer.price;
-      const cexPrice = eth.price;
-      if (cexPrice === 0) return;
-
-      const spreadPercent = Math.abs(dexPrice - cexPrice) / cexPrice * 100;
-      const direction: OpportunitySignal['direction'] = dexPrice < cexPrice ? 'BUY_DEX' : 'SELL_DEX';
-
-      logInfo('scout', `X Layer: $${dexPrice.toFixed(2)} | Ethereum: $${cexPrice.toFixed(2)} | Spread: ${spreadPercent.toFixed(2)}%`);
-
-      const now = new Date();
-      latestSignal = {
-        id: uuidv4(),
-        tokenPair: 'OKB/USDC',
-        fromToken: NATIVE,
-        toToken: USDC_XLAYER,
-        cexPrice, dexPrice,
-        spreadPercent: parseFloat(spreadPercent.toFixed(4)),
-        direction,
-        volume24h: 0,
-        confidence: Math.min(1, spreadPercent / 10),
-        timestamp: now.toISOString(),
-        expiresAt: new Date(now.getTime() + 30_000).toISOString(),
-      };
-
-      eventBus.emitDashboardEvent({
-        type: 'signal_detected',
-        data: latestSignal,
-        timestamp: latestSignal.timestamp,
-      });
-    } catch (err) {
-      logError('scout', 'Price scan failed', err);
+    const results: ArbitrageOpportunity[] = [];
+    for (const token of TRACKED_TOKENS) {
+      const opp = await scanToken(token);
+      if (opp) results.push(opp);
+      await sleep(2000);
+    }
+    if (results.length > 0) {
+      results.sort((a, b) => b.spreadPercent - a.spreadPercent);
+      latestSignal = results[0];
+      logInfo('scout', `Best: ${latestSignal.token} spread ${latestSignal.spreadPercent}% (${latestSignal.direction})`);
+      eventBus.emitDashboardEvent({ type: 'signal_detected', data: latestSignal, timestamp: latestSignal.timestamp });
+    } else {
+      logInfo('scout', 'No arbitrage opportunities found');
     }
   }
 
-  // Initial scan + interval
   await scan();
-  setInterval(() => { void scan(); }, config.SCOUT_POLL_INTERVAL * 4); // 20s to avoid rate limits
+  setInterval(() => { void scan(); }, config.SCOUT_POLL_INTERVAL * 6); // 30s
 }
 
-// ── Analyst Agent ──
+// ── Analyst ──
 async function startAnalyst(): Promise<void> {
   const wallet = new ethers.Wallet(config.ANALYST_PK);
   const app = express();
@@ -129,94 +141,74 @@ async function startAnalyst(): Promise<void> {
   });
   app.get('/health', (_req, res) => res.json({ status: 'ok', agentId: 'analyst' }));
 
-  app.listen(config.ANALYST_PORT, () => {
-    logInfo('analyst', `Listening on port ${config.ANALYST_PORT}`);
-  });
+  app.listen(config.ANALYST_PORT, () => logInfo('analyst', `Listening on port ${config.ANALYST_PORT}`));
 
-  // Analysis loop — buy signal from Scout, analyze, store recommendation
   async function analyze() {
     if (!latestSignal) { logInfo('analyst', 'No signal available'); return; }
-
     try {
-      // Purchase signal from Scout via x402
-      const signal = await callPaidEndpoint<OpportunitySignal>(
-        wallet as any, // Wallet without provider is fine for signing
+      const signal = await callPaidEndpoint<ArbitrageOpportunity>(
+        wallet as any,
         `http://localhost:${config.SCOUT_PORT}/api/opportunity-signal`,
         'GET', 'analyst', 'scout'
       );
+      if (!signal?.id) return;
+      if (Date.now() > new Date(signal.expiresAt).getTime()) { logInfo('analyst', 'Signal expired'); return; }
 
-      if (!signal?.id) { logInfo('analyst', 'No signal from Scout'); return; }
-
-      // Check freshness
-      if (Date.now() > new Date(signal.expiresAt).getTime()) {
-        logInfo('analyst', 'Signal expired');
-        return;
-      }
-
-      // Re-validate with fresh quote
       await sleep(1500);
+
+      // Re-validate DEX price
       let priceImpact = 0.1;
-      let gasFee = '288000';
       try {
         const quote = await getSwapQuote({
-          chainIndex: '196', fromTokenAddress: signal.fromToken,
-          toTokenAddress: signal.toToken, amount: '1000000000000000', slippagePercent: '0.5',
+          chainIndex: '196', fromTokenAddress: signal.tokenAddress,
+          toTokenAddress: USDC_XLAYER,
+          amount: TRACKED_TOKENS.find(t => t.symbol === signal.token)?.quoteAmount ?? '1000000000000000000',
+          slippagePercent: '0.5',
         });
         priceImpact = parseFloat(quote.priceImpactPercentage || '0.1');
-        gasFee = quote.estimateGasFee;
       } catch { /* use defaults */ }
 
       const tradeAmountUSDC = config.MAX_TRADE_SIZE_USDC;
       const grossProfit = (signal.spreadPercent / 100) * tradeAmountUSDC;
       const slippageCost = (Math.max(priceImpact, 0.1) / 100) * tradeAmountUSDC;
       const netProfit = grossProfit - slippageCost - 0.05;
-      const action = netProfit > 0.5 && signal.confidence > 0.01 ? 'EXECUTE' as const : 'SKIP' as const;
+      const action = netProfit > 0.10 ? 'EXECUTE' as const : 'SKIP' as const;
 
       latestRecommendation = {
         id: uuidv4(),
         signalId: signal.id,
-        action,
-        confidence: signal.confidence,
+        action, confidence: signal.confidence,
         estimatedProfit: parseFloat(netProfit.toFixed(4)),
         estimatedSlippage: parseFloat(priceImpact.toFixed(4)),
         estimatedPriceImpact: priceImpact,
-        suggestedAmount: '10000000000000000',
+        suggestedAmount: TRACKED_TOKENS.find(t => t.symbol === signal.token)?.quoteAmount ?? '0',
         suggestedMinOutput: '0',
-        reason: `Net profit $${netProfit.toFixed(2)}, confidence ${signal.confidence.toFixed(2)}`,
+        reason: `CeDeFi arb: ${signal.token} spread ${signal.spreadPercent.toFixed(2)}%, net $${netProfit.toFixed(2)} (${signal.direction})`,
         timestamp: new Date().toISOString(),
       };
 
-      logInfo('analyst', `Analysis: ${action} | profit $${netProfit.toFixed(2)} | confidence ${signal.confidence.toFixed(2)}`);
-
-      eventBus.emitDashboardEvent({
-        type: 'analysis_complete',
-        data: latestRecommendation,
-        timestamp: latestRecommendation.timestamp,
-      });
+      logInfo('analyst', `${signal.token}: ${action} | spread ${signal.spreadPercent.toFixed(2)}% | net $${netProfit.toFixed(2)}`);
+      eventBus.emitDashboardEvent({ type: 'analysis_complete', data: latestRecommendation, timestamp: latestRecommendation.timestamp });
     } catch (err) {
       logError('analyst', 'Analysis failed', err);
     }
   }
 
-  // Wait for Scout to have data, then start
-  await sleep(8000);
+  await sleep(12000);
   await analyze();
-  setInterval(() => { void analyze(); }, config.SCOUT_POLL_INTERVAL * 5); // 25s
+  setInterval(() => { void analyze(); }, config.SCOUT_POLL_INTERVAL * 7); // 35s
 }
 
-// ── Executor Agent ──
+// ── Executor ──
 async function startExecutor(): Promise<void> {
   const app = express();
   app.use(express.json());
   app.get('/api/trade-result', (_req, res) => res.status(204).json({ message: 'No result' }));
   app.get('/health', (_req, res) => res.json({ status: 'ok', agentId: 'executor' }));
-
-  app.listen(config.EXECUTOR_PORT, () => {
-    logInfo('executor', `Listening on port ${config.EXECUTOR_PORT}`);
-  });
+  app.listen(config.EXECUTOR_PORT, () => logInfo('executor', `Listening on port ${config.EXECUTOR_PORT}`));
 }
 
-// ── Treasury Agent ──
+// ── Treasury ──
 async function startTreasury(): Promise<void> {
   const provider = new ethers.JsonRpcProvider(config.XLAYER_RPC);
   const wallet = new ethers.Wallet(config.TREASURY_PK, provider);
@@ -224,63 +216,39 @@ async function startTreasury(): Promise<void> {
 
   const app = express();
   app.use(express.json());
-
   app.post('/api/risk-check', (_req, res) => {
-    res.json({
-      approved: !portfolio.circuitBreakerActive,
-      maxTradeSize: '1000000',
-      reason: portfolio.circuitBreakerActive ? 'Circuit breaker active' : undefined,
-    });
+    res.json({ approved: !portfolio.circuitBreakerActive, maxTradeSize: '1000000' });
   });
   app.get('/api/portfolio', (_req, res) => res.json(portfolio));
   app.post('/api/trade-result', (_req, res) => res.json({ received: true }));
   app.get('/health', (_req, res) => res.json({ status: 'ok', agentId: 'treasury' }));
+  app.listen(config.TREASURY_PORT, () => logInfo('treasury', `Listening on port ${config.TREASURY_PORT}`));
 
-  app.listen(config.TREASURY_PORT, () => {
-    logInfo('treasury', `Listening on port ${config.TREASURY_PORT}`);
-  });
-
-  // Portfolio monitoring
   async function refreshPortfolio() {
     try {
       const nativeBal = await provider.getBalance(wallet.address);
       const nativeHuman = parseFloat(ethers.formatEther(nativeBal));
-
       let usdcBal = 0;
       try {
         const usdc = new ethers.Contract(USDC_XLAYER, ERC20_ABI, provider);
-        const raw = await usdc.balanceOf(wallet.address);
-        usdcBal = parseFloat(ethers.formatUnits(raw, 6));
+        usdcBal = parseFloat(ethers.formatUnits(await usdc.balanceOf(wallet.address), 6));
       } catch { /* skip */ }
 
-      // Get native price for USD conversion
       let nativePrice = 0;
-      try {
-        const p = await getPrice('196', NATIVE, USDC_XLAYER);
-        nativePrice = p.price;
-      } catch { /* skip */ }
+      try { nativePrice = (await getPrice('196', NATIVE, USDC_XLAYER)).price; } catch { /* skip */ }
 
       const nativeValue = nativeHuman * nativePrice;
       const totalValue = nativeValue + usdcBal;
-
       portfolio = {
         totalValueUSD: parseFloat(totalValue.toFixed(4)),
         tokenBalances: [
           { token: 'OKB', balance: nativeHuman.toFixed(6), valueUSD: parseFloat(nativeValue.toFixed(4)) },
           { token: 'USDC', balance: usdcBal.toFixed(6), valueUSD: usdcBal },
         ],
-        dailyPnL: 0,
-        dailyPnLPercent: 0,
-        circuitBreakerActive: false,
+        dailyPnL: 0, dailyPnLPercent: 0, circuitBreakerActive: false,
       };
-
-      logInfo('treasury', `Portfolio: $${totalValue.toFixed(2)} (OKB: ${nativeHuman.toFixed(4)}, USDC: ${usdcBal.toFixed(2)})`);
-
-      eventBus.emitDashboardEvent({
-        type: 'portfolio_update',
-        data: portfolio,
-        timestamp: new Date().toISOString(),
-      });
+      logInfo('treasury', `Portfolio: $${totalValue.toFixed(2)}`);
+      eventBus.emitDashboardEvent({ type: 'portfolio_update', data: portfolio, timestamp: new Date().toISOString() });
     } catch (err) {
       logError('treasury', 'Portfolio refresh failed', err);
     }
@@ -288,21 +256,18 @@ async function startTreasury(): Promise<void> {
 
   await sleep(3000);
   await refreshPortfolio();
-  setInterval(() => { void refreshPortfolio(); }, config.PORTFOLIO_POLL_INTERVAL * 2); // 60s
+  setInterval(() => { void refreshPortfolio(); }, config.PORTFOLIO_POLL_INTERVAL * 2);
 }
 
-// ── Start all agents ──
+// ── Start all ──
 export async function startAllAgents(): Promise<void> {
-  logInfo('orchestrator', 'Starting all 4 agents in-process...');
-
+  logInfo('orchestrator', 'Starting 4 agents (CeDeFi arbitrage mode)...');
   await startScout();
   await startExecutor();
   await startTreasury();
-  await startAnalyst(); // Last — needs Scout to be running
-
+  await startAnalyst();
   logInfo('orchestrator', 'All 4 agents started');
 
-  // Emit agent_registered events for dashboard
   for (const agent of ['scout', 'analyst', 'executor', 'treasury']) {
     eventBus.emitDashboardEvent({
       type: 'agent_registered',

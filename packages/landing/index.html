@@ -165,10 +165,10 @@ footer .footer-links a:hover{color:var(--text)}
     </div>
 
     <div class="terminal fade-in" id="terminal">
-      <div class="t-row"><span class="t-agent">SCOUT</span><span class="t-status scanning">scanning</span><span class="t-label">X Layer : </span><span class="t-val" id="tv-xlayer">$97.82</span>&nbsp;&nbsp;&nbsp;<span class="t-label">Ethereum : </span><span class="t-val" id="tv-eth">$2,119.54</span>&nbsp;&nbsp;&nbsp;<span class="t-label">spread : </span><span class="t-val accent" id="tv-spread">0.34%</span></div>
-      <div class="t-row"><span class="t-agent">ANALYST</span><span class="t-status active">evaluating</span><span class="t-label">confidence : </span><span class="t-val" id="tv-conf">0.82</span>&nbsp;&nbsp;&nbsp;<span class="t-label">net_profit : </span><span class="t-val accent" id="tv-profit">$1.47</span>&nbsp;&nbsp;&nbsp;<span class="t-label">action : </span><span class="t-val accent" id="tv-action">EXECUTE</span></div>
-      <div class="t-row"><span class="t-agent">EXECUTOR</span><span class="t-status scanning">pending</span><span class="t-label">route : </span><span class="t-val" id="tv-route">PotatoSwap</span>&nbsp;&nbsp;&nbsp;<span class="t-label">slippage : </span><span class="t-val" id="tv-slip">0.12%</span>&nbsp;&nbsp;&nbsp;<span class="t-label">gas : </span><span class="t-val accent">$0.00</span></div>
-      <div class="t-row"><span class="t-agent">TREASURY</span><span class="t-status active">active</span><span class="t-label">portfolio : </span><span class="t-val" id="tv-port">$4.92</span>&nbsp;&nbsp;&nbsp;<span class="t-label">daily_pnl : </span><span class="t-val accent" id="tv-pnl">+$0.31</span>&nbsp;&nbsp;&nbsp;<span class="t-label">circuit : </span><span class="t-val accent">OK</span></div>
+      <div class="t-row" id="token-rows"></div>
+      <div class="t-row"><span class="t-agent">ANALYST</span><span class="t-status active">evaluating</span><span class="t-label">best : </span><span class="t-val" id="tv-best">--</span>&nbsp;&nbsp;&nbsp;<span class="t-label">spread : </span><span class="t-val accent" id="tv-spread">--</span>&nbsp;&nbsp;&nbsp;<span class="t-label">net_profit : </span><span class="t-val accent" id="tv-profit">--</span>&nbsp;&nbsp;&nbsp;<span class="t-label">action : </span><span class="t-val accent" id="tv-action">IDLE</span></div>
+      <div class="t-row"><span class="t-agent">EXECUTOR</span><span class="t-status scanning">pending</span><span class="t-label">route : </span><span class="t-val" id="tv-route">--</span>&nbsp;&nbsp;&nbsp;<span class="t-label">slippage : </span><span class="t-val" id="tv-slip">--</span>&nbsp;&nbsp;&nbsp;<span class="t-label">gas : </span><span class="t-val accent">$0.00</span></div>
+      <div class="t-row"><span class="t-agent">TREASURY</span><span class="t-status active">active</span><span class="t-label">portfolio : </span><span class="t-val" id="tv-port">--</span>&nbsp;&nbsp;&nbsp;<span class="t-label">daily_pnl : </span><span class="t-val accent" id="tv-pnl">--</span>&nbsp;&nbsp;&nbsp;<span class="t-label">circuit : </span><span class="t-val accent">OK</span></div>
     </div>
 
     <div class="btn-row fade-in">
@@ -363,22 +363,34 @@ function setVal(id, val) {
   setTimeout(() => { el.textContent = val; el.style.opacity = '1'; }, 150);
 }
 
-// Live data from orchestrator API (relative path — works when served by orchestrator)
+// Live CeDeFi data from orchestrator API
 const API_URL = '/api/live-prices';
-let lastData = null;
 
 async function fetchLive() {
   try {
     const res = await fetch(API_URL);
     if (!res.ok) throw new Error('API ' + res.status);
     const d = await res.json();
-    lastData = d;
 
-    // Terminal readout
-    setVal('tv-xlayer', '$' + d.scout.xlayerPrice.toFixed(2));
-    setVal('tv-eth', '$' + d.scout.ethPrice.toFixed(2));
+    // Build token rows for Scout
+    const rowsEl = document.getElementById('token-rows');
+    if (rowsEl && d.tokens && d.tokens.length > 0) {
+      rowsEl.innerHTML = d.tokens.map(function(t) {
+        const src = t.cexSource === 'okx-cex' ? 'OKX' : t.cexSource === 'binance-cex' ? 'Binance' : 'DEX';
+        return '<div style="margin-bottom:2px">' +
+          '<span class="t-agent">SCOUT</span>' +
+          '<span class="t-status scanning">scanning</span>' +
+          '<span class="t-label">' + t.symbol + '/USDC</span>&nbsp;&nbsp;&nbsp;' +
+          '<span class="t-label">DEX : </span><span class="t-val">$' + t.dexPrice.toFixed(4) + '</span>&nbsp;&nbsp;&nbsp;' +
+          '<span class="t-label">' + src + ' : </span><span class="t-val">$' + t.cexPrice.toFixed(4) + '</span>&nbsp;&nbsp;&nbsp;' +
+          '<span class="t-label">spread : </span><span class="t-val accent">' + t.spread.toFixed(4) + '%</span>' +
+          '</div>';
+      }).join('');
+    }
+
+    // Analyst
+    setVal('tv-best', d.scout.bestToken);
     setVal('tv-spread', d.scout.spread.toFixed(2) + '%');
-    setVal('tv-conf', Number(d.analyst.confidence).toFixed(2));
     setVal('tv-profit', '$' + Number(d.analyst.netProfit).toFixed(2));
     setVal('tv-action', d.analyst.action);
     setVal('tv-route', d.executor.route);
@@ -391,19 +403,13 @@ async function fetchLive() {
     setVal('m-tx', String(d.meta.totalTx));
     setVal('m-agents', String(d.meta.agentsRegistered));
     setVal('m-cycles', String(d.meta.cyclesCompleted));
-
-    // Update LIVE indicator
-    const liveEl = document.querySelector('.terminal::before');
-    document.querySelector('.terminal').setAttribute('data-live', 'true');
   } catch (e) {
-    // API offline — terminal shows last known or static values
-    document.querySelector('.terminal').setAttribute('data-live', 'false');
+    // API offline — keep last values
   }
 }
 
-// Initial fetch + poll every 12 seconds
 fetchLive();
-setInterval(fetchLive, 12000);
+setInterval(fetchLive, 15000);
 </script>
 </body>
 </html>

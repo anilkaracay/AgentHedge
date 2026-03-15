@@ -1,74 +1,85 @@
 import { v4 as uuidv4 } from 'uuid';
 import {
   getPrice,
+  getCEXPrice,
+  TRACKED_TOKENS,
+  USDC_XLAYER,
   config,
   logInfo,
   logError,
 } from '@agenthedge/shared';
-import type { OpportunitySignal } from '@agenthedge/shared';
+import type { ArbitrageOpportunity, TokenConfig } from '@agenthedge/shared';
 
-const NATIVE_TOKEN = config.NATIVE_TOKEN_ADDRESS;
+function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 
-// USDC addresses per chain
-const USDC_XLAYER = config.USDC_ADDRESS;
-const USDC_ETHEREUM = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
-
-const XLAYER_CHAIN = config.XLAYER_CHAIN_INDEX;
-const ETH_MAINNET_CHAIN = config.ETH_MAINNET_CHAIN_INDEX;
-
-export async function scanForOpportunity(): Promise<OpportunitySignal | null> {
+/**
+ * Scan a single token for CeDeFi arbitrage opportunity.
+ * Compares X Layer DEX price (OnchainOS aggregator/quote) vs CEX spot price (OKX/Binance).
+ */
+async function scanToken(token: TokenConfig): Promise<ArbitrageOpportunity | null> {
   try {
-    // Get price via aggregator/quote on both chains
-    // Quote: native token → USDC gives us the token price in USD
-    const [xlayerPrice, ethPrice] = await Promise.all([
-      getPrice(XLAYER_CHAIN, NATIVE_TOKEN, USDC_XLAYER),
-      getPrice(ETH_MAINNET_CHAIN, NATIVE_TOKEN, USDC_ETHEREUM),
-    ]);
+    // Get DEX price from X Layer via OnchainOS aggregator/quote
+    const dexResult = await getPrice('196', token.xlayerAddress, USDC_XLAYER, token.quoteAmount);
+    const dexPrice = dexResult.price;
 
-    const dexPrice = xlayerPrice.price;
-    const cexPrice = ethPrice.price;
+    await sleep(1000); // Rate limit spacing
 
-    if (cexPrice === 0) {
-      logError('scout', 'CEX reference price is zero, skipping');
-      return null;
-    }
+    // Get CEX spot price (OKX -> Binance -> Ethereum DEX fallback)
+    const cexPoint = await getCEXPrice(token);
+    const cexPrice = cexPoint.price;
 
-    const spreadPercent = Math.abs(dexPrice - cexPrice) / cexPrice;
-    const direction: OpportunitySignal['direction'] =
-      dexPrice < cexPrice ? 'BUY_DEX' : 'SELL_DEX';
+    if (cexPrice === 0 || dexPrice === 0) return null;
 
-    logInfo('scout', `X Layer: $${dexPrice.toFixed(2)} | Ethereum: $${cexPrice.toFixed(2)} | Spread: ${(spreadPercent * 100).toFixed(4)}%`, {
-      dexPrice,
-      cexPrice,
-      direction,
-    });
+    const spreadPercent = Math.abs(cexPrice - dexPrice) / cexPrice * 100;
+    const spreadAbsolute = Math.abs(cexPrice - dexPrice);
+    const direction = dexPrice < cexPrice ? 'BUY_DEX_SELL_CEX' as const : 'BUY_CEX_SELL_DEX' as const;
 
-    if (spreadPercent <= config.SPREAD_THRESHOLD) {
+    logInfo('scout', `${token.symbol}/USDC | DEX: $${dexPrice.toFixed(4)} | CEX(${cexPoint.source}): $${cexPrice.toFixed(4)} | Spread: ${spreadPercent.toFixed(4)}% | ${direction}`);
+
+    if (spreadPercent <= config.SPREAD_THRESHOLD * 100) {
       return null;
     }
 
     const now = new Date();
-    const expiresAt = new Date(now.getTime() + 30_000);
-
-    const signal: OpportunitySignal = {
+    return {
       id: uuidv4(),
-      tokenPair: 'ETH/USDC',
-      fromToken: NATIVE_TOKEN,
-      toToken: USDC_XLAYER,
-      cexPrice,
-      dexPrice,
-      spreadPercent: parseFloat((spreadPercent * 100).toFixed(4)),
+      token: token.symbol,
+      tokenAddress: token.xlayerAddress,
+      dexPrice: { source: 'xlayer-dex', price: dexPrice, timestamp: now.toISOString() },
+      cexPrice: cexPoint,
+      spreadPercent: parseFloat(spreadPercent.toFixed(4)),
+      spreadAbsolute: parseFloat(spreadAbsolute.toFixed(6)),
       direction,
-      volume24h: 0, // not available from aggregator API
-      confidence: Math.min(1, spreadPercent / 0.01),
+      confidence: Math.min(1, spreadPercent / 1.0),
       timestamp: now.toISOString(),
-      expiresAt: expiresAt.toISOString(),
+      expiresAt: new Date(now.getTime() + 30_000).toISOString(),
     };
-
-    logInfo('scout', `Opportunity detected: ${signal.tokenPair} spread ${signal.spreadPercent}%`);
-    return signal;
   } catch (err) {
-    logError('scout', 'Price scan failed', err);
+    logError('scout', `Scan failed for ${token.symbol}`, err);
     return null;
   }
+}
+
+/**
+ * Scan all tracked tokens and return the best arbitrage opportunity.
+ */
+export async function scanForOpportunity(): Promise<ArbitrageOpportunity | null> {
+  const results: ArbitrageOpportunity[] = [];
+
+  for (const token of TRACKED_TOKENS) {
+    const opp = await scanToken(token);
+    if (opp) results.push(opp);
+    await sleep(1500); // Rate limit between tokens
+  }
+
+  if (results.length === 0) {
+    logInfo('scout', 'No arbitrage opportunities found across tracked tokens');
+    return null;
+  }
+
+  // Return the opportunity with highest spread
+  results.sort((a, b) => b.spreadPercent - a.spreadPercent);
+  const best = results[0];
+  logInfo('scout', `Best opportunity: ${best.token} spread ${best.spreadPercent}% (${best.direction})`);
+  return best;
 }

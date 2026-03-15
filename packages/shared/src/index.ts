@@ -21,6 +21,8 @@ export type {
   SwapResponse,
   PriceResult,
 } from './onchainOS.js';
+export { getCEXPrice } from './cexPriceFeed.js';
+export { TRACKED_TOKENS, USDC_XLAYER } from './tokenRegistry.js';
 export { createX402Middleware } from './x402Server.js';
 export type { X402RouteConfig } from './x402Server.js';
 export { callPaidEndpoint } from './x402Client.js';

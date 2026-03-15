@@ -4,38 +4,55 @@ export interface AgentConfig {
   role: 'scout' | 'analyst' | 'executor' | 'treasury';
   privateKey: string;
   port: number;
-  endpoint: string; // "http://host:port"
-  pricePerRequest: number; // in USDC human units (e.g., 0.02)
+  endpoint: string;
+  pricePerRequest: number;
 }
 
-// ── Scout Output ──
-export interface OpportunitySignal {
-  id: string;                    // uuid
-  tokenPair: string;             // "ETH/USDC"
-  fromToken: string;             // contract address
-  toToken: string;               // contract address
-  cexPrice: number;              // CEX reference price
-  dexPrice: number;              // DEX price on X Layer
-  spreadPercent: number;         // e.g., 0.45 means 0.45%
-  direction: 'BUY_DEX' | 'SELL_DEX';
-  volume24h: number;
-  confidence: number;            // 0-1
-  timestamp: string;             // ISO 8601
-  expiresAt: string;             // ISO 8601 (timestamp + 30s)
+// ── Token Registry ──
+export interface TokenConfig {
+  symbol: string;
+  xlayerAddress: string;
+  cexSymbol: string;           // "ETHUSDC" for Binance, mapped to "ETH-USDC" for OKX
+  decimals: number;
+  quoteAmount: string;         // base units for 1 token
 }
+
+export interface PricePoint {
+  source: string;              // "xlayer-dex" | "okx-cex" | "binance-cex" | "ethereum-dex"
+  price: number;
+  timestamp: string;
+}
+
+// ── Scout Output: CeDeFi Arbitrage ──
+export interface ArbitrageOpportunity {
+  id: string;
+  token: string;               // symbol, e.g., "ETH"
+  tokenAddress: string;        // X Layer contract address
+  dexPrice: PricePoint;
+  cexPrice: PricePoint;
+  spreadPercent: number;       // |cex - dex| / cex * 100
+  spreadAbsolute: number;      // absolute USDC difference
+  direction: 'BUY_DEX_SELL_CEX' | 'BUY_CEX_SELL_DEX';
+  confidence: number;
+  timestamp: string;
+  expiresAt: string;
+}
+
+// Keep OpportunitySignal as alias for backward compat in x402 endpoints
+export type OpportunitySignal = ArbitrageOpportunity;
 
 // ── Analyst Output ──
 export interface ExecutionRecommendation {
-  id: string;                    // uuid
-  signalId: string;              // references OpportunitySignal.id
+  id: string;
+  signalId: string;
   action: 'EXECUTE' | 'SKIP';
-  confidence: number;            // 0-1
-  estimatedProfit: number;       // in USDC after all costs
-  estimatedSlippage: number;     // percent
-  estimatedPriceImpact: number;  // percent
-  suggestedAmount: string;       // trade amount in token base units
-  suggestedMinOutput: string;    // minimum acceptable output
-  reason: string;                // human-readable explanation
+  confidence: number;
+  estimatedProfit: number;
+  estimatedSlippage: number;
+  estimatedPriceImpact: number;
+  suggestedAmount: string;
+  suggestedMinOutput: string;
+  reason: string;
   timestamp: string;
 }
 
@@ -44,12 +61,12 @@ export interface TradeResult {
   id: string;
   recommendationId: string;
   status: 'EXECUTED' | 'FAILED' | 'SKIPPED';
-  txHash?: string;               // X Layer transaction hash
+  txHash?: string;
   fromToken: string;
   toToken: string;
   amountIn: string;
   amountOut?: string;
-  realizedProfit?: number;       // in USDC
+  realizedProfit?: number;
   gasUsed?: string;
   blockNumber?: number;
   error?: string;
@@ -59,17 +76,17 @@ export interface TradeResult {
 // ── Treasury Types ──
 export interface RiskApproval {
   approved: boolean;
-  maxTradeSize: string;          // in token base units
+  maxTradeSize: string;
   reason?: string;
 }
 
 export interface ProfitDistribution {
   tradeId: string;
   totalProfit: number;
-  executorFee: number;           // 10% of profit
-  treasuryFee: number;           // 5% of profit
-  poolReturn: number;            // remaining 85%
-  txHashes: string[];            // x402 payment tx hashes
+  executorFee: number;
+  treasuryFee: number;
+  poolReturn: number;
+  txHashes: string[];
   timestamp: string;
 }
 
@@ -91,9 +108,9 @@ export interface DashboardEvent {
 }
 
 export interface X402PaymentEvent {
-  from: string;     // agent ID
-  to: string;       // agent ID
-  amount: number;   // USDC human units
+  from: string;
+  to: string;
+  amount: number;
   txHash?: string;
-  purpose: string;  // "signal_purchase" | "analysis_purchase" | "executor_fee" | "treasury_fee"
+  purpose: string;
 }
