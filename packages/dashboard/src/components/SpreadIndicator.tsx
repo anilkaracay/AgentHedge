@@ -1,7 +1,12 @@
 import { useMemo } from 'react';
 import type { DashboardEvent } from '../hooks/useSocket';
 
-const THRESHOLD = 0.32; // professional tier profitability threshold
+const THRESHOLD = 0.32;
+const BAR_W = 6;
+const BAR_GAP = 3;
+const CHART_H = 32;
+const MAX_BARS = 20;
+const CHART_W = MAX_BARS * (BAR_W + BAR_GAP);
 
 interface Props {
   events: DashboardEvent[];
@@ -22,7 +27,7 @@ export default function SpreadIndicator({ events }: Props) {
         }
       }
     }
-    return spreads.slice(0, 20).reverse();
+    return spreads.slice(0, MAX_BARS).reverse();
   }, [events]);
 
   const latestSignal = useMemo(() => {
@@ -45,9 +50,9 @@ export default function SpreadIndicator({ events }: Props) {
   const venueCount = latestSignal?.venuesResponded ?? 0;
   const isExecute = latestAction === 'EXECUTE';
 
-  // Sparkline bars
-  const maxSpread = Math.max(...spreadHistory.map(s => s.spread), THRESHOLD * 1.2);
-  const barH = 26;
+  // Scale: at least 0.8% so bars have room
+  const maxSpread = Math.max(...spreadHistory.map(s => s.spread), THRESHOLD * 2.5, 0.8);
+  const thresholdY = CHART_H - (THRESHOLD / maxSpread) * CHART_H;
 
   return (
     <div className={`card px-3 py-2 ${isExecute ? 'animate-spread-alert' : ''}`}>
@@ -75,30 +80,44 @@ export default function SpreadIndicator({ events }: Props) {
           <span className="text-[#3f3f46]">${sellPrice.toFixed(2)}</span>
         </div>
 
-        {/* Bar sparkline with threshold */}
-        <div className="flex-1 flex items-end justify-end gap-[3px] relative" style={{ height: barH }}>
-          {/* Threshold line */}
-          {spreadHistory.length > 0 && (
-            <div
-              className="absolute left-0 right-0"
-              style={{
-                bottom: (THRESHOLD / maxSpread) * barH,
-                height: 1,
-                borderTop: '1px dashed rgba(250,204,21,0.2)',
-              }}
+        {/* SVG Bar Chart */}
+        <div className="flex-1 flex justify-end">
+          <svg width={CHART_W + 30} height={CHART_H} className="overflow-visible">
+            {/* Threshold dashed line */}
+            <line
+              x1="0" y1={thresholdY}
+              x2={CHART_W} y2={thresholdY}
+              stroke="rgba(239,68,68,0.3)"
+              strokeDasharray="4 3"
+              strokeWidth="1"
             />
-          )}
-          {spreadHistory.map((s, i) => {
-            const h = Math.max(2, (s.spread / maxSpread) * barH);
-            const color = s.action === 'EXECUTE' ? '#FACC15' : '#3f3f46';
-            return (
-              <div
-                key={i}
-                className="w-[4px] rounded-t-[1px] relative z-10"
-                style={{ height: h, backgroundColor: color }}
-              />
-            );
-          })}
+            {/* Threshold label */}
+            <text
+              x={CHART_W + 4} y={thresholdY + 3}
+              fill="rgba(239,68,68,0.45)"
+              fontSize="8"
+              fontFamily="JetBrains Mono, monospace"
+            >
+              {THRESHOLD}%
+            </text>
+
+            {/* Bars */}
+            {spreadHistory.map((s, i) => {
+              const h = Math.max(1, (s.spread / maxSpread) * CHART_H);
+              const isProfitable = s.spread >= THRESHOLD;
+              return (
+                <rect
+                  key={i}
+                  x={i * (BAR_W + BAR_GAP)}
+                  y={CHART_H - h}
+                  width={BAR_W}
+                  height={h}
+                  fill={isProfitable ? '#FACC15' : '#3f3f46'}
+                  rx="1"
+                />
+              );
+            })}
+          </svg>
         </div>
       </div>
     </div>

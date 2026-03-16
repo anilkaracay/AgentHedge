@@ -1,8 +1,9 @@
+import { useMemo } from 'react';
 import type { DashboardEvent } from '../hooks/useSocket';
 
 const STEPS = ['SCOUT', 'ANALYST', 'EXECUTOR', 'TREASURY'];
 
-const STAGE_EVENTS: Record<string, string[]> = {
+const STEP_EVENTS: Record<string, string[]> = {
   SCOUT: ['signal_detected'],
   ANALYST: ['analysis_complete'],
   EXECUTOR: ['trade_executed'],
@@ -14,43 +15,51 @@ interface Props {
 }
 
 export default function PipelineViz({ events }: Props) {
-  const recent = events.slice(0, 12);
+  // Derive pipeline phase from the most recent events in this cycle
+  const { completed, activeIdx } = useMemo(() => {
+    const recent = events.slice(0, 15);
+    const done = STEPS.map(step =>
+      recent.some(e => STEP_EVENTS[step]?.includes(e.type))
+    );
 
-  const completed = STEPS.map(step =>
-    recent.some(e => STAGE_EVENTS[step]?.includes(e.type))
-  );
+    // Find which step is active: the first one not yet completed
+    // If all are done, activeIdx = -1 (cycle complete, all green)
+    let active = -1;
+    for (let i = 0; i < done.length; i++) {
+      if (!done[i]) { active = i; break; }
+    }
 
-  // Active = first non-completed, or -1 if all done
-  let activeIdx = -1;
-  for (let i = 0; i < STEPS.length; i++) {
-    if (!completed[i]) { activeIdx = i; break; }
-  }
-  // If all completed, show all green (cycle done)
-  const allDone = completed.every(Boolean);
+    return { completed: done, activeIdx: active };
+  }, [events]);
+
+  const allDone = activeIdx === -1;
 
   return (
     <div className="flex items-center justify-center py-2.5">
       {STEPS.map((step, i) => {
         const done = completed[i];
-        const active = i === activeIdx && !allDone;
+        const active = i === activeIdx;
         const pending = !done && !active;
+
+        // Line color: green if the node BEFORE this line is completed
+        const lineGreen = i > 0 && completed[i - 1];
 
         return (
           <div key={step} className="flex items-center">
-            {/* Connector before node */}
+            {/* Connector line (before node, not after last) */}
             {i > 0 && (
               <div
                 className="mx-2.5"
                 style={{
                   width: 52,
                   height: 1,
-                  background: completed[i - 1] ? (allDone ? '#22c55e' : '#22c55e') : '#27272a',
+                  background: lineGreen ? '#22c55e' : '#27272a',
                   marginBottom: 18,
                 }}
               />
             )}
 
-            {/* Node */}
+            {/* Node + label */}
             <div className="flex flex-col items-center gap-1">
               <div
                 className={active ? 'pipeline-active' : ''}

@@ -86,17 +86,23 @@ export default function TradeHistory({ trades, events }: Props) {
                   {isExpanded && <TradeDetail t={t} buyVenue={buyVenue} buyPrice={buyPrice} sellVenue={sellVenue} sellPrice={sellPrice} size={size} profit={profit} />}
 
                   {/* Monitor row between trades */}
-                  {monitorBetween && (
-                    <div className="px-3 py-1 border-b border-[rgba(255,255,255,0.03)] flex items-center gap-2 font-mono text-[10px]" style={{ opacity: 0.4 }}>
-                      <span className="text-[#52525b]">{new Date(monitorBetween.timestamp).toLocaleTimeString('en-GB', { hour12: false })}</span>
-                      <span className="text-[#3f3f46]">· · ·</span>
-                      <span className="text-[#71717a] uppercase">monitor</span>
-                      <span className="text-[#71717a]">spread {((monitorBetween.data as any).estimatedSlippage ?? 0).toFixed(2)}%</span>
-                      <span className="text-[#52525b]">·</span>
-                      <span className="text-[#52525b]">below 0.32% threshold</span>
-                      <span className="text-[#3f3f46]">· · ·</span>
-                    </div>
-                  )}
+                  {monitorBetween && (() => {
+                    // Get spread from nearest signal_detected event (confidence ≈ spreadPercent for small values)
+                    const monitorTime = new Date(monitorBetween.timestamp).getTime();
+                    const nearestSignal = events.find(e => e.type === 'signal_detected' && Math.abs(new Date(e.timestamp).getTime() - monitorTime) < 30000);
+                    const spreadVal = nearestSignal ? (nearestSignal.data as any).spreadPercent ?? 0 : (monitorBetween.data as any).confidence ?? 0;
+                    return (
+                      <div className="px-3 py-1 border-b border-[rgba(255,255,255,0.03)] flex items-center gap-2 font-mono text-[10px]" style={{ opacity: 0.4 }}>
+                        <span className="text-[#52525b]">{new Date(monitorBetween.timestamp).toLocaleTimeString('en-GB', { hour12: false })}</span>
+                        <span className="text-[#3f3f46]">· · ·</span>
+                        <span className="text-[#71717a] uppercase">monitor</span>
+                        <span className="text-[#71717a]">spread {spreadVal.toFixed(2)}%</span>
+                        <span className="text-[#52525b]">·</span>
+                        <span className="text-[#52525b]">below 0.32% threshold</span>
+                        <span className="text-[#3f3f46]">· · ·</span>
+                      </div>
+                    );
+                  })()}
                 </div>
               );
             })}
