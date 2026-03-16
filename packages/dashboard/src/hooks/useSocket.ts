@@ -4,8 +4,17 @@ import { io, Socket } from 'socket.io-client';
 export interface DashboardEvent {
   type: 'agent_registered' | 'signal_detected' | 'analysis_complete'
     | 'trade_executed' | 'profit_distributed' | 'risk_alert'
-    | 'x402_payment' | 'cycle_complete' | 'portfolio_update';
+    | 'x402_payment' | 'cycle_complete' | 'portfolio_update'
+    | 'chain_attestation';
   data: any;
+  timestamp: string;
+}
+
+export interface ChainAttestation {
+  cycleId: number;
+  txHash: string;
+  spreadBps: number;
+  decision: string;
   timestamp: string;
 }
 
@@ -48,6 +57,7 @@ export function useDashboardEvents() {
   const [trades, setTrades] = useState<TradeResult[]>([]);
   const [connected, setConnected] = useState(false);
   const [pnlHistory, setPnlHistory] = useState<{ time: string; pnl: number }[]>([]);
+  const [attestations, setAttestations] = useState<ChainAttestation[]>([]);
   const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
@@ -82,6 +92,9 @@ export function useDashboardEvents() {
         case 'trade_executed':
           setTrades(prev => [event.data as TradeResult, ...prev].slice(0, 50));
           break;
+        case 'chain_attestation':
+          setAttestations(prev => [event.data as ChainAttestation, ...prev].slice(0, 50));
+          break;
       }
     });
 
@@ -104,5 +117,5 @@ export function useDashboardEvents() {
     }).then(() => setDemoMode(newMode)).catch(() => {});
   };
 
-  return { events, portfolio, payments, trades, connected, pnlHistory, demoMode, toggleDemoMode };
+  return { events, portfolio, payments, trades, connected, pnlHistory, attestations, demoMode, toggleDemoMode };
 }

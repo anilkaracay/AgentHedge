@@ -202,19 +202,38 @@ All requests are authenticated with HMAC-SHA256 signed headers per the OKX Devel
 
 ### AgentRegistry
 
-A lightweight on-chain registry where agents register metadata (role, endpoint, pricing) and track performance. The registry is for discovery and reputation only -- all payments go through x402.
+On-chain registry and attestation layer. Agents register metadata (role, endpoint, pricing), track performance, and submit verifiable cycle attestations. Every arbitrage cycle records real market data on-chain -- price snapshots, spread calculations, venue counts, and agent decisions -- creating an immutable audit trail.
 
 ```
-Contract:  0x6d62f601B8A0f57b712cc5dB60D270cBcb7aE0e6
+Contract:  0xB8406ad5A79721d8D411837b68dfc5E4FF1A41e4
 Network:   X Layer Mainnet (Chain ID: 196)
 Compiler:  Solidity 0.8.24, optimizer enabled (200 runs)
 Framework: Hardhat + OpenZeppelin Ownable
-Tests:     24 passing
+Tests:     33 passing
 ```
 
-Functions: `register()`, `getAgent()`, `getAllAgents()`, `getAgentCount()`, `updateEndpoint()`, `updatePrice()`, `recordSuccess()`, `recordFailure()`, `deactivate()`
+**Agent Registry**: `register()`, `getAgent()`, `getAllAgents()`, `getAgentCount()`, `updateEndpoint()`, `updatePrice()`, `recordSuccess()`, `recordFailure()`, `deactivate()`
+
+**Cycle Attestation**: `attestCycle()`, `getAttestation()`, `getLatestAttestations()`, `attestationCount()`
+
+Each attestation records: best bid/ask prices (18 decimals), spread in basis points, venue count, buy/sell venue hashes, decision (EXECUTE/MONITOR/SKIP), estimated profit in cents, and the attesting agent's address. All EXECUTE cycles and every 5th MONITOR cycle are attested on-chain.
 
 Source: `packages/contracts/contracts/AgentRegistry.sol`
+
+### On-Chain Verification
+
+Every arbitrage cycle is attested on X Layer. Each attestation records:
+- Real-time prices from all scanned venues
+- Calculated spread in basis points
+- Agent decision (EXECUTE / MONITOR / SKIP)
+- Estimated profit/loss
+
+This creates an immutable, verifiable audit trail. Anyone can read the attestations from the AgentRegistry contract and independently verify the system's behavior.
+
+```
+Contract: 0xB8406ad5A79721d8D411837b68dfc5E4FF1A41e4
+Explorer: https://www.okx.com/explorer/xlayer/address/0xB8406ad5A79721d8D411837b68dfc5E4FF1A41e4
+```
 
 ---
 
@@ -224,7 +243,7 @@ Source: `packages/contracts/contracts/AgentRegistry.sol`
 
 | Component | Address |
 |-----------|---------|
-| AgentRegistry | [`0x6d62f601B8A0f57b712cc5dB60D270cBcb7aE0e6`](https://www.okx.com/web3/explorer/xlayer/address/0x6d62f601B8A0f57b712cc5dB60D270cBcb7aE0e6) |
+| AgentRegistry (v2 + Attestations) | [`0xB8406ad5A79721d8D411837b68dfc5E4FF1A41e4`](https://www.okx.com/web3/explorer/xlayer/address/0xB8406ad5A79721d8D411837b68dfc5E4FF1A41e4) |
 | USDC (X Layer) | [`0x74b7f16337b8972027f6196a17a631ac6de26d22`](https://www.okx.com/web3/explorer/xlayer/address/0x74b7f16337b8972027f6196a17a631ac6de26d22) |
 | Scout Wallet | `0xddEecB2b67564541D5E765c4351C579F5F73a41e` |
 | Analyst Wallet | `0x103b2E12CDB4AaE9700b67f77c72394E26402d09` |
@@ -234,7 +253,7 @@ Source: `packages/contracts/contracts/AgentRegistry.sol`
 
 ### Transaction Log
 
-All 13 transactions verified on X Layer mainnet:
+All transactions verified on X Layer mainnet:
 
 | # | Operation | Tx Hash | Explorer |
 |---|-----------|---------|----------|
@@ -251,6 +270,11 @@ All 13 transactions verified on X Layer mainnet:
 | 11 | Register Treasury on AgentRegistry | `0xb1730237...` | [View](https://www.okx.com/web3/explorer/xlayer/tx/0xb1730237bbbd34f7f265cb5d477f75b990164d39263902b7695323251917a38f) |
 | 12 | Cycle 1: Executor recordSuccess | `0x4ea5fd0e...` | [View](https://www.okx.com/web3/explorer/xlayer/tx/0x4ea5fd0ee46bd884ea06cf839cc5cab12aa400e88513e667faa9dcf0cfa2d69a) |
 | 13 | Cycle 2: Executor recordSuccess | `0x3875480e...` | [View](https://www.okx.com/web3/explorer/xlayer/tx/0x3875480e9d6f48a1f4657ae3cfc15bb5d51515b02c828c36be56a8cf980fc7a1) |
+| 14 | Deploy AgentRegistry v2 (+ attestations) | `--` | [Contract](https://www.okx.com/explorer/xlayer/address/0xB8406ad5A79721d8D411837b68dfc5E4FF1A41e4) |
+| 15 | Register Scout (v2) | `0x6c61d698...` | [View](https://www.okx.com/web3/explorer/xlayer/tx/0x6c61d69826fce25ea9948563b1cf43acfb0de3ed4d868907606052f533fe61f4) |
+| 16 | Register Analyst (v2) | `0xf8db1873...` | [View](https://www.okx.com/web3/explorer/xlayer/tx/0xf8db1873a1402695c23512042ab426f81750970761dc5d2056ca2310faeb2046) |
+| 17 | Register Executor (v2) | `0x607d6e13...` | [View](https://www.okx.com/web3/explorer/xlayer/tx/0x607d6e133771fb130303cbfe11364718577e6b21411297ee562fd12e0d1a881c) |
+| 18 | Register Treasury (v2) | `0xae95379b...` | [View](https://www.okx.com/web3/explorer/xlayer/tx/0xae95379b20a2e72cecc22a0e939a753375a0630e1db6612d64ae1863b9090872) |
 
 ### Live Price Data (from demo cycles)
 

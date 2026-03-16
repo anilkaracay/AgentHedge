@@ -216,4 +216,119 @@ describe('AgentRegistry', function () {
       ).to.be.revertedWith('Not agent owner');
     });
   });
+
+  describe('attestCycle()', function () {
+    const buyHash = ethers.keccak256(ethers.toUtf8Bytes('okx'));
+    const sellHash = ethers.keccak256(ethers.toUtf8Bytes('binance'));
+
+    beforeEach(async function () {
+      await registry.connect(scout).register('scout-1', 'scout', 'http://localhost:3001', PRICE, USDC);
+    });
+
+    it('should allow registered agent to attest a cycle', async function () {
+      await registry.connect(scout).attestCycle(
+        1, // cycleId
+        ethers.parseUnits('95.50', 18), // bestBidPrice
+        ethers.parseUnits('96.10', 18), // bestAskPrice
+        63, // spreadBps (0.63%)
+        7,  // venueCount
+        buyHash,
+        sellHash,
+        1,  // decision: EXECUTE
+        1250 // estimatedProfitUsd in cents ($12.50)
+      );
+
+      const att = await registry.getAttestation(0);
+      expect(att.cycleId).to.equal(1);
+      expect(att.bestBidPrice).to.equal(ethers.parseUnits('95.50', 18));
+      expect(att.bestAskPrice).to.equal(ethers.parseUnits('96.10', 18));
+      expect(att.spreadBps).to.equal(63);
+      expect(att.venueCount).to.equal(7);
+      expect(att.buyVenueHash).to.equal(buyHash);
+      expect(att.sellVenueHash).to.equal(sellHash);
+      expect(att.decision).to.equal(1);
+      expect(att.estimatedProfitUsd).to.equal(1250);
+      expect(att.attestedBy).to.equal(scout.address);
+      expect(await registry.attestationCount()).to.equal(1);
+    });
+
+    it('should reject attestation from unregistered address', async function () {
+      await expect(
+        registry.connect(other).attestCycle(1, 0, 0, 0, 0, buyHash, sellHash, 0, 0)
+      ).to.be.revertedWith('Not an active agent');
+    });
+
+    it('should reject attestation from deactivated agent', async function () {
+      await registry.connect(scout).deactivate('scout-1');
+      await expect(
+        registry.connect(scout).attestCycle(1, 0, 0, 0, 0, buyHash, sellHash, 0, 0)
+      ).to.be.revertedWith('Not an active agent');
+    });
+
+    it('should emit CycleAttested event with correct data', async function () {
+      await expect(
+        registry.connect(scout).attestCycle(
+          5, ethers.parseUnits('95.50', 18), ethers.parseUnits('96.10', 18),
+          63, 7, buyHash, sellHash, 1, 1250
+        )
+      ).to.emit(registry, 'CycleAttested').withArgs(5, 63, 1, 1250, (v: any) => v > 0);
+    });
+
+    it('should store multiple attestations', async function () {
+      await registry.connect(scout).attestCycle(1, 0, 0, 10, 5, buyHash, sellHash, 0, -50);
+      await registry.connect(scout).attestCycle(2, 0, 0, 42, 7, buyHash, sellHash, 1, 1250);
+      await registry.connect(scout).attestCycle(3, 0, 0, 8, 6, buyHash, sellHash, 2, -100);
+
+      expect(await registry.attestationCount()).to.equal(3);
+
+      const att1 = await registry.getAttestation(0);
+      expect(att1.cycleId).to.equal(1);
+      expect(att1.decision).to.equal(0); // MONITOR
+
+      const att3 = await registry.getAttestation(2);
+      expect(att3.cycleId).to.equal(3);
+      expect(att3.decision).to.equal(2); // SKIP
+    });
+  });
+
+  describe('getAttestation()', function () {
+    beforeEach(async function () {
+      await registry.connect(scout).register('scout-1', 'scout', 'http://localhost:3001', PRICE, USDC);
+    });
+
+    it('should revert for out-of-bounds index', async function () {
+      await expect(registry.getAttestation(0)).to.be.revertedWith('Index out of bounds');
+    });
+  });
+
+  describe('getLatestAttestations()', function () {
+    const buyHash = ethers.keccak256(ethers.toUtf8Bytes('okx'));
+    const sellHash = ethers.keccak256(ethers.toUtf8Bytes('binance'));
+
+    beforeEach(async function () {
+      await registry.connect(scout).register('scout-1', 'scout', 'http://localhost:3001', PRICE, USDC);
+      // Add 5 attestations
+      for (let i = 1; i <= 5; i++) {
+        await registry.connect(scout).attestCycle(i, 0, 0, i * 10, 7, buyHash, sellHash, i % 3, i * 100);
+      }
+    });
+
+    it('should return last N attestations', async function () {
+      const latest = await registry.getLatestAttestations(3);
+      expect(latest.length).to.equal(3);
+      expect(latest[0].cycleId).to.equal(3); // 3rd attestation
+      expect(latest[1].cycleId).to.equal(4);
+      expect(latest[2].cycleId).to.equal(5);
+    });
+
+    it('should return all when count exceeds total', async function () {
+      const latest = await registry.getLatestAttestations(100);
+      expect(latest.length).to.equal(5);
+    });
+
+    it('should return empty for zero count', async function () {
+      const latest = await registry.getLatestAttestations(0);
+      expect(latest.length).to.equal(0);
+    });
+  });
 });

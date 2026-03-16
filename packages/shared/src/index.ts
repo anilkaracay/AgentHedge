@@ -30,9 +30,9 @@ export { createX402Middleware } from './x402Server.js';
 export type { X402RouteConfig } from './x402Server.js';
 export { callPaidEndpoint } from './x402Client.js';
 export {
-  getRegistryContract, registerAgent, getAgent, getAllAgents,
+  getRegistryContract, registerAgent, getAgent, getAllAgents, attestCycleOnChain,
 } from './registry.js';
-export type { OnChainAgent } from './registry.js';
+export type { OnChainAgent, AttestCycleParams } from './registry.js';
 export { AgentBase } from './AgentBase.js';
 export { estimateTradeCosts, calculateMinProfitableSize, getCostBreakdown, formatProfitReport, getFeeTierInfo, FEE_STRUCTURE } from './profitCalculator.js';
 export type { TradeCosts, CostBreakdown, TradeSize, FeeTier } from './profitCalculator.js';

@@ -17,14 +17,39 @@ contract AgentRegistry is Ownable {
         bool active;
     }
 
+    struct CycleAttestation {
+        uint256 cycleId;
+        uint256 timestamp;
+        uint256 bestBidPrice;      // cheapest venue price (18 decimals)
+        uint256 bestAskPrice;      // most expensive venue price (18 decimals)
+        uint16 spreadBps;          // spread in basis points
+        uint8 venueCount;          // how many venues responded
+        bytes32 buyVenueHash;      // keccak256 of cheapest venue name
+        bytes32 sellVenueHash;     // keccak256 of most expensive venue name
+        uint8 decision;            // 0=MONITOR, 1=EXECUTE, 2=SKIP
+        int256 estimatedProfitUsd; // estimated profit in cents (can be negative)
+        address attestedBy;        // which agent submitted this
+    }
+
     mapping(string => Agent) public agents;
+    mapping(address => bool) public activeAgentWallets;
     string[] public agentIds;
+
+    CycleAttestation[] public attestations;
+    uint256 public attestationCount;
 
     event AgentRegistered(string indexed agentId, address wallet, string role);
     event AgentUpdated(string indexed agentId);
     event SuccessRecorded(string indexed agentId, uint256 total);
     event FailureRecorded(string indexed agentId, uint256 total);
     event AgentDeactivated(string indexed agentId);
+    event CycleAttested(
+        uint256 indexed cycleId,
+        uint16 spreadBps,
+        uint8 decision,
+        int256 estimatedProfitUsd,
+        uint256 timestamp
+    );
 
     constructor() Ownable(msg.sender) {}
 
@@ -52,6 +77,7 @@ contract AgentRegistry is Ownable {
             active: true
         });
 
+        activeAgentWallets[msg.sender] = true;
         agentIds.push(_agentId);
         emit AgentRegistered(_agentId, msg.sender, _role);
     }
@@ -100,6 +126,62 @@ contract AgentRegistry is Ownable {
     function deactivate(string calldata _agentId) external {
         require(agents[_agentId].wallet == msg.sender, "Not agent owner");
         agents[_agentId].active = false;
+        activeAgentWallets[msg.sender] = false;
         emit AgentDeactivated(_agentId);
+    }
+
+    // ── Cycle Attestation ──
+
+    function attestCycle(
+        uint256 _cycleId,
+        uint256 _bestBidPrice,
+        uint256 _bestAskPrice,
+        uint16 _spreadBps,
+        uint8 _venueCount,
+        bytes32 _buyVenueHash,
+        bytes32 _sellVenueHash,
+        uint8 _decision,
+        int256 _estimatedProfitUsd
+    ) external {
+        require(activeAgentWallets[msg.sender], "Not an active agent");
+
+        attestations.push(CycleAttestation({
+            cycleId: _cycleId,
+            timestamp: block.timestamp,
+            bestBidPrice: _bestBidPrice,
+            bestAskPrice: _bestAskPrice,
+            spreadBps: _spreadBps,
+            venueCount: _venueCount,
+            buyVenueHash: _buyVenueHash,
+            sellVenueHash: _sellVenueHash,
+            decision: _decision,
+            estimatedProfitUsd: _estimatedProfitUsd,
+            attestedBy: msg.sender
+        }));
+
+        attestationCount++;
+
+        emit CycleAttested(
+            _cycleId,
+            _spreadBps,
+            _decision,
+            _estimatedProfitUsd,
+            block.timestamp
+        );
+    }
+
+    function getAttestation(uint256 index) external view returns (CycleAttestation memory) {
+        require(index < attestationCount, "Index out of bounds");
+        return attestations[index];
+    }
+
+    function getLatestAttestations(uint256 count) external view returns (CycleAttestation[] memory) {
+        uint256 start = attestationCount > count ? attestationCount - count : 0;
+        uint256 length = attestationCount - start;
+        CycleAttestation[] memory result = new CycleAttestation[](length);
+        for (uint256 i = 0; i < length; i++) {
+            result[i] = attestations[start + i];
+        }
+        return result;
     }
 }

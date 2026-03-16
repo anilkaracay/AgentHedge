@@ -12,11 +12,16 @@ const AGENT_REGISTRY_ABI = [
   'function recordSuccess(string _agentId) external',
   'function recordFailure(string _agentId) external',
   'function deactivate(string _agentId) external',
+  'function attestCycle(uint256 _cycleId, uint256 _bestBidPrice, uint256 _bestAskPrice, uint16 _spreadBps, uint8 _venueCount, bytes32 _buyVenueHash, bytes32 _sellVenueHash, uint8 _decision, int256 _estimatedProfitUsd) external',
+  'function getAttestation(uint256 index) external view returns (tuple(uint256 cycleId, uint256 timestamp, uint256 bestBidPrice, uint256 bestAskPrice, uint16 spreadBps, uint8 venueCount, bytes32 buyVenueHash, bytes32 sellVenueHash, uint8 decision, int256 estimatedProfitUsd, address attestedBy))',
+  'function getLatestAttestations(uint256 count) external view returns (tuple(uint256 cycleId, uint256 timestamp, uint256 bestBidPrice, uint256 bestAskPrice, uint16 spreadBps, uint8 venueCount, bytes32 buyVenueHash, bytes32 sellVenueHash, uint8 decision, int256 estimatedProfitUsd, address attestedBy)[])',
+  'function attestationCount() external view returns (uint256)',
   'event AgentRegistered(string indexed agentId, address wallet, string role)',
   'event AgentUpdated(string indexed agentId)',
   'event SuccessRecorded(string indexed agentId, uint256 total)',
   'event FailureRecorded(string indexed agentId, uint256 total)',
   'event AgentDeactivated(string indexed agentId)',
+  'event CycleAttested(uint256 indexed cycleId, uint16 spreadBps, uint8 decision, int256 estimatedProfitUsd, uint256 timestamp)',
 ] as const;
 
 export interface OnChainAgent {
@@ -71,4 +76,51 @@ export async function getAllAgents(
 ): Promise<OnChainAgent[]> {
   const registry = getRegistryContract(provider);
   return await registry.getAllAgents();
+}
+
+export interface AttestCycleParams {
+  cycleId: number;
+  bestBidPrice: number;
+  bestAskPrice: number;
+  spreadBps: number;
+  venueCount: number;
+  buyVenue: string;
+  sellVenue: string;
+  decision: 'MONITOR' | 'EXECUTE' | 'SKIP';
+  estimatedProfitCents: number;
+}
+
+export async function attestCycleOnChain(
+  wallet: ethers.Wallet,
+  params: AttestCycleParams
+): Promise<{ txHash: string } | null> {
+  try {
+    const provider = new ethers.JsonRpcProvider(config.XLAYER_RPC);
+    const signer = wallet.connect(provider);
+    const registry = getRegistryContract(signer);
+
+    const bestBidPrice = ethers.parseUnits(params.bestBidPrice.toFixed(6), 18);
+    const bestAskPrice = ethers.parseUnits(params.bestAskPrice.toFixed(6), 18);
+    const buyVenueHash = ethers.keccak256(ethers.toUtf8Bytes(params.buyVenue));
+    const sellVenueHash = ethers.keccak256(ethers.toUtf8Bytes(params.sellVenue));
+    const decision = params.decision === 'EXECUTE' ? 1 : params.decision === 'MONITOR' ? 0 : 2;
+
+    const tx = await registry.attestCycle(
+      params.cycleId,
+      bestBidPrice,
+      bestAskPrice,
+      params.spreadBps,
+      params.venueCount,
+      buyVenueHash,
+      sellVenueHash,
+      decision,
+      params.estimatedProfitCents,
+      { gasLimit: 200000 }
+    );
+
+    const receipt = await tx.wait();
+    return { txHash: receipt.hash };
+  } catch {
+    return null;
+  }
 }

@@ -7,7 +7,7 @@ import { Server } from 'socket.io';
 import { config, logInfo, logError, eventBus, scanAllVenues, getGasPrice, TRACKED_TOKENS } from '@agenthedge/shared';
 import type { DashboardEvent } from '@agenthedge/shared';
 import { runArbitrageCycle } from './pipeline.js';
-import { startAllAgents, getDemoHistory } from './agents.js';
+import { startAllAgents, getDemoHistory, getAttestationHistory } from './agents.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CYCLE_INTERVAL_MS = config.SCOUT_POLL_INTERVAL * 3; // ~15s between cycles
@@ -50,6 +50,11 @@ io.on('connection', (socket) => {
     socket.emit('dashboard_event', { type: 'x402_payment', data: payment, timestamp: payment.timestamp });
   }
 
+  // Replay all attestations
+  for (const att of history.attestations) {
+    socket.emit('dashboard_event', { type: 'chain_attestation', data: att, timestamp: att.timestamp });
+  }
+
   // Send current portfolio
   if (liveState.treasury.portfolio > 0) {
     socket.emit('dashboard_event', {
@@ -59,7 +64,7 @@ io.on('connection', (socket) => {
     });
   }
 
-  logInfo('orchestrator', `Synced ${history.trades.length} trades + ${history.payments.length} payments to dashboard`);
+  logInfo('orchestrator', `Synced ${history.trades.length} trades + ${history.payments.length} payments + ${history.attestations.length} attestations to dashboard`);
 
   socket.on('disconnect', () => {
     logInfo('orchestrator', `Dashboard disconnected: ${socket.id}`);
@@ -222,6 +227,10 @@ app.get('/api/live-prices', async (_req, res) => {
       error: 'Using cached data',
     });
   }
+});
+
+app.get('/api/attestations', (_req, res) => {
+  res.json({ attestations: getAttestationHistory(), count: getAttestationHistory().length });
 });
 
 app.get('/api/health', (_req, res) => {

@@ -14,6 +14,7 @@ import {
   isDemoMode, getDemoPortfolio, updateDemoBalance, maybeInjectVolatilitySpike, FEE_STRUCTURE, findOptimalTradeSize,
   TRACKED_TOKENS, USDC_XLAYER,
   createX402Middleware, callPaidEndpoint,
+  attestCycleOnChain,
 } from '@agenthedge/shared';
 import type {
   ArbitrageOpportunity, ExecutionRecommendation,
@@ -26,8 +27,71 @@ function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 let latestSignal: ArbitrageOpportunity | null = null;
 const demoTradeHistory: any[] = [];
 const demoPaymentHistory: any[] = [];
+const attestationHistory: { cycleId: number; txHash: string; spreadBps: number; decision: string; timestamp: string }[] = [];
 
-export function getDemoHistory() { return { trades: demoTradeHistory, payments: demoPaymentHistory }; }
+// Attestation throttling: every EXECUTE + every Nth MONITOR
+const ATTEST_EVERY_N_MONITOR = 5;
+let monitorCount = 0;
+let attestCycleId = 0;
+
+// Use scout wallet for attestation (registered agent)
+const scoutWallet = new ethers.Wallet(config.SCOUT_PK);
+
+async function maybeAttestCycle(
+  decision: 'EXECUTE' | 'MONITOR' | 'SKIP',
+  signal: ArbitrageOpportunity | null,
+  estimatedProfitCents: number
+) {
+  if (!signal) return;
+
+  // Throttle: always attest EXECUTE, every Nth MONITOR, skip SKIP
+  if (decision === 'SKIP') return;
+  if (decision === 'MONITOR') {
+    monitorCount++;
+    if (monitorCount % ATTEST_EVERY_N_MONITOR !== 0) return;
+  }
+
+  attestCycleId++;
+  const spreadBps = Math.round(signal.spreadPercent * 100);
+
+  logInfo('attestation', `Attesting cycle #${attestCycleId} (${decision}, ${spreadBps}bps) on-chain...`);
+
+  const result = await attestCycleOnChain(scoutWallet, {
+    cycleId: attestCycleId,
+    bestBidPrice: signal.buyVenue.price,
+    bestAskPrice: signal.sellVenue.price,
+    spreadBps,
+    venueCount: signal.venuesResponded,
+    buyVenue: signal.buyVenue.venue,
+    sellVenue: signal.sellVenue.venue,
+    decision,
+    estimatedProfitCents,
+  });
+
+  if (result) {
+    const entry = {
+      cycleId: attestCycleId,
+      txHash: result.txHash,
+      spreadBps,
+      decision,
+      timestamp: new Date().toISOString(),
+    };
+    attestationHistory.push(entry);
+    logInfo('attestation', `Cycle #${attestCycleId} attested: tx ${result.txHash}`);
+
+    eventBus.emitDashboardEvent({
+      type: 'chain_attestation',
+      data: entry,
+      timestamp: entry.timestamp,
+    });
+  } else {
+    logInfo('attestation', `Cycle #${attestCycleId} attestation failed (non-critical)`);
+  }
+}
+
+export function getAttestationHistory() { return attestationHistory; }
+
+export function getDemoHistory() { return { trades: demoTradeHistory, payments: demoPaymentHistory, attestations: attestationHistory }; }
 let latestRecommendation: ExecutionRecommendation | null = null;
 let portfolio: PortfolioSnapshot = {
   totalValueUSD: 0, tokenBalances: [], dailyPnL: 0, dailyPnLPercent: 0, circuitBreakerActive: false,
@@ -173,6 +237,9 @@ async function startAnalyst(): Promise<void> {
 
       logInfo('analyst', `${signal.token}: ${action} | net $${costs.netProfit.toFixed(3)} (${costs.netProfitPercent.toFixed(2)}%) | transfer: ${costs.transferNote}`);
       eventBus.emitDashboardEvent({ type: 'analysis_complete', data: latestRecommendation, timestamp: latestRecommendation.timestamp });
+
+      // On-chain attestation (throttled: every EXECUTE + every 5th MONITOR)
+      void maybeAttestCycle(action, freshOpp, Math.round(costs.netProfit * 100));
 
       // Demo mode: execute ALL profitable venue pairs with dynamic sizing
       if (action === 'EXECUTE' && isDemoMode()) {

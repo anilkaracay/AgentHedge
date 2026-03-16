@@ -4,11 +4,12 @@ import AgentNetwork from './components/AgentNetwork';
 import PaymentStream from './components/PaymentStream';
 import TradeHistory from './components/TradeHistory';
 import RiskDashboard from './components/RiskDashboard';
+import ChainAttestations from './components/ChainAttestations';
 
 const PIPELINE_STAGES = ['SCOUT', 'ANALYST', 'EXECUTOR', 'TREASURY'];
 
 function App() {
-  const { events, portfolio, payments, trades, connected, pnlHistory, demoMode, toggleDemoMode } = useDashboardEvents();
+  const { events, portfolio, payments, trades, connected, pnlHistory, attestations, demoMode, toggleDemoMode } = useDashboardEvents();
   const [uptime, setUptime] = useState(0);
 
   useEffect(() => {
@@ -117,6 +118,9 @@ function App() {
         </div>
         <div className="w-[320px] flex-shrink-0 border-l border-[#27272a] overflow-y-auto p-2">
           <RiskDashboard portfolio={portfolio} pnlHistory={pnlHistory} />
+          <div className="border-t border-[#27272a] mt-2">
+            <ChainAttestations attestations={attestations} />
+          </div>
         </div>
       </div>
     </div>

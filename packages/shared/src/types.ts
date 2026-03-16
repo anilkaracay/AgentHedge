@@ -127,7 +127,8 @@ export interface PortfolioSnapshot {
 export interface DashboardEvent {
   type: 'agent_registered' | 'signal_detected' | 'analysis_complete'
     | 'trade_executed' | 'profit_distributed' | 'risk_alert'
-    | 'x402_payment' | 'cycle_complete' | 'portfolio_update';
+    | 'x402_payment' | 'cycle_complete' | 'portfolio_update'
+    | 'chain_attestation';
   data: unknown;
   timestamp: string;
 }
