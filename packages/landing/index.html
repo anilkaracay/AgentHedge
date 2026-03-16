@@ -381,8 +381,7 @@ footer .footer-links a:hover{color:var(--text)}
           if (evt.type === 'x402_payment' && evt.data?.txHash) {
             x402Count++;
             document.getElementById('m-x402').textContent = x402Count;
-            const totalTx = 5 + x402Count + attestCount + (rows.filter(r => r.type === 'ATTEST').length);
-            document.getElementById('m-tx').textContent = totalTx;
+            document.getElementById('m-tx').textContent = 18 + x402Count + attestCount;
           }
           if (evt.type === 'chain_attestation' && evt.data?.txHash) {
             attestCount++;
@@ -412,13 +411,13 @@ footer .footer-links a:hover{color:var(--text)}
     }).join('');
 
     // Update metrics
-    const totalTx = 5 + x402Count + attestCount;
+    // 18 foundation txs (4 fund OKB + 3 fund USDC + 4 register v1 + 2 recordSuccess + 1 deploy v2 + 4 register v2)
+    const baseTx = 18;
+    const totalTx = baseTx + x402Count + attestCount;
     document.getElementById('m-tx').textContent = totalTx;
     document.getElementById('m-attestations').textContent = attestCount || rows.filter(r => r.type === 'ATTEST').length || '6';
     document.getElementById('m-x402').textContent = x402Count || '10';
-    if (totalTx > 0) {
-      document.getElementById('explorer-link').textContent = `View all ${totalTx}+ transactions on X Layer Explorer →`;
-    }
+    document.getElementById('explorer-link').textContent = 'View all ' + totalTx + '+ transactions on X Layer Explorer →';
   })();
   </script>
 
@@ -522,10 +521,8 @@ async function fetchLive() {
     var pnl = Number(d.treasury.dailyPnl);
     setVal('tv-pnl', (pnl >= 0 ? '+' : '') + '$' + pnl.toFixed(2));
 
-    // Metrics
-    setVal('m-tx', String(d.meta.totalTx));
+    // Metrics — don't overwrite dynamic tx/attestation counts from loadMainnetData
     setVal('m-agents', String(d.meta.agentsRegistered));
-    setVal('m-cycles', String(d.meta.cyclesCompleted));
   } catch (e) {
     // API offline — keep last values
   }
