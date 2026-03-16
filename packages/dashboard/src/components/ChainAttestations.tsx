@@ -7,48 +7,49 @@ function shortenHash(hash: string) {
 }
 
 function decisionColor(decision: string) {
-  if (decision === 'EXECUTE') return 'text-[#10b981]';
-  if (decision === 'MONITOR') return 'text-[#f59e0b]';
-  return 'text-[#71717a]';
+  if (decision === 'EXECUTE') return '#22c55e';
+  if (decision === 'MONITOR') return '#FACC15';
+  return '#3f3f46';
 }
 
 export default function ChainAttestations({ attestations }: { attestations: ChainAttestation[] }) {
   return (
-    <div className="p-2">
-      <div className="flex items-center justify-between mb-2">
-        <span className="font-mono text-[10px] text-[#71717a] uppercase tracking-wider">
+    <div className="card p-3">
+      <div className="flex items-center justify-between mb-3 border-b border-[rgba(255,255,255,0.06)] pb-1.5">
+        <span className="text-[10px] text-[#52525b] uppercase tracking-wider font-sans">
           On-Chain Attestations
         </span>
-        <span className="font-mono text-[10px] text-[#a1a1aa]">
-          {attestations.length} total
+        <span className="font-mono text-[10px] text-[#52525b]">
+          {attestations.length}
         </span>
       </div>
 
       {attestations.length === 0 ? (
-        <div className="text-center py-4">
-          <span className="font-mono text-[10px] text-[#52525b]">
+        <div className="text-center py-3">
+          <span className="font-mono text-[10px] text-[#3f3f46]">
             Waiting for first attestation...
           </span>
         </div>
       ) : (
-        <div className="space-y-0.5">
-          {attestations.slice(0, 10).map((att) => {
+        <div className="space-y-1">
+          {attestations.slice(0, 8).map((att, i) => {
             const time = new Date(att.timestamp).toLocaleTimeString('en-US', { hour12: false });
             return (
               <div
                 key={att.txHash}
-                className="grid font-mono text-[10px] py-0.5 border-b border-[#18181b]"
-                style={{ gridTemplateColumns: '55px 55px 60px 55px 1fr 14px' }}
+                className={`flex items-center gap-2 font-mono text-[10px] py-0.5 ${i === 0 ? 'animate-slide-in' : ''}`}
               >
-                <span className="text-[#52525b]">{time}</span>
-                <span className="text-[#a1a1aa]">Cycle #{att.cycleId}</span>
-                <span className={decisionColor(att.decision)}>{att.decision}</span>
-                <span className="text-[#71717a]">{att.spreadBps}bps</span>
+                <span className="text-[#3f3f46] w-[50px] flex-shrink-0">{time}</span>
+                <span className="text-[#52525b] flex-shrink-0">#{att.cycleId}</span>
+                <span className="flex-shrink-0 font-medium" style={{ color: decisionColor(att.decision) }}>
+                  {att.decision}
+                </span>
+                <span className="text-[#3f3f46] flex-shrink-0">{att.spreadBps}bps</span>
                 <a
                   href={`${EXPLORER_BASE}${att.txHash}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-[#3b82f6] hover:text-[#60a5fa] truncate"
+                  className="text-[#FACC15]/50 hover:text-[#FACC15] truncate transition-colors"
                 >
                   {shortenHash(att.txHash)}
                 </a>
@@ -56,7 +57,7 @@ export default function ChainAttestations({ attestations }: { attestations: Chai
                   href={`${EXPLORER_BASE}${att.txHash}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-[#3b82f6] hover:text-[#60a5fa]"
+                  className="text-[#FACC15]/50 hover:text-[#FACC15] flex-shrink-0 transition-colors"
                 >
                   ↗
                 </a>

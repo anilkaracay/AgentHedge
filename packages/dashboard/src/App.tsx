@@ -5,8 +5,8 @@ import PaymentStream from './components/PaymentStream';
 import TradeHistory from './components/TradeHistory';
 import RiskDashboard from './components/RiskDashboard';
 import ChainAttestations from './components/ChainAttestations';
-
-const PIPELINE_STAGES = ['SCOUT', 'ANALYST', 'EXECUTOR', 'TREASURY'];
+import SpreadIndicator from './components/SpreadIndicator';
+import PipelineViz from './components/PipelineViz';
 
 function App() {
   const { events, portfolio, payments, trades, connected, pnlHistory, attestations, demoMode, toggleDemoMode } = useDashboardEvents();
@@ -26,99 +26,96 @@ function App() {
     return `${h}:${m}:${sec}`;
   };
 
-  const lastCycleEvents = events.slice(0, 10);
-  const pipelineState = PIPELINE_STAGES.map((stage, i) => {
-    const stageEvents: Record<string, string[]> = {
-      SCOUT: ['signal_detected'],
-      ANALYST: ['analysis_complete'],
-      EXECUTOR: ['trade_executed'],
-      TREASURY: ['profit_distributed', 'portfolio_update'],
-    };
-    const hasEvent = lastCycleEvents.some(e => stageEvents[stage]?.includes(e.type));
-    return hasEvent ? 'done' : i === 0 ? 'active' : 'pending';
-  });
-
   return (
-    <div className="h-screen flex flex-col bg-[#09090b] text-[#fafafa] overflow-hidden">
+    <div className="h-screen flex flex-col bg-[#09090b] text-[#e4e4e7] overflow-hidden">
       {/* Demo Banner */}
       {demoMode && (
-        <div className="h-6 flex-shrink-0 bg-[#10b981]/10 border-b border-[#10b981]/20 flex items-center justify-center">
-          <span className="font-mono text-[10px] text-[#10b981] uppercase tracking-wider">
-            Demo Mode -- Simulated portfolio, live prices with market microstructure simulation
+        <div className="h-6 flex-shrink-0 bg-[#FACC15]/5 border-b border-[#FACC15]/10 flex items-center justify-center">
+          <span className="font-mono text-[10px] text-[#FACC15]/70 uppercase tracking-wider">
+            Demo Mode — Simulated portfolio, live prices with market microstructure simulation
           </span>
         </div>
       )}
 
       {/* Top Bar */}
-      <header className="h-12 flex-shrink-0 border-b border-[#27272a] flex items-center justify-between px-4 bg-[#09090b]">
-        <span className="font-mono text-[14px] font-medium tracking-tight">AgentHedge</span>
-
+      <header className="h-11 flex-shrink-0 border-b border-[rgba(255,255,255,0.06)] flex items-center justify-between px-4 bg-[#09090b]">
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5">
-            <div className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-[#10b981] animate-pulse-dot' : 'bg-[#ef4444]'}`} />
-            <span className="font-mono text-[11px] text-[#71717a] uppercase">
+          {/* Logo */}
+          <div className="flex items-baseline">
+            <span className="font-serif text-[16px] text-[#FACC15]">a</span>
+            <span className="font-serif text-[16px] text-[#e4e4e7]">Hedge</span>
+          </div>
+
+          {/* Connection status */}
+          <div className="flex items-center gap-1.5 ml-2">
+            <div className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-[#22c55e]' : 'bg-[#ef4444]'}`} />
+            <span className="font-mono text-[10px] text-[#52525b] uppercase">
               {connected ? 'LIVE' : 'OFFLINE'}
             </span>
           </div>
+        </div>
 
+        {/* Center: Demo toggle + cycle */}
+        <div className="flex items-center gap-4">
           {/* Demo Toggle */}
           <button
             onClick={toggleDemoMode}
-            className="flex items-center gap-1.5 px-2 py-0.5 border border-[#27272a] hover:border-[#10b981]/50 transition-colors"
+            className="flex items-center gap-1.5 px-2.5 py-1 border border-[rgba(255,255,255,0.06)] hover:border-[#FACC15]/30 transition-colors rounded-[2px]"
           >
-            <span className="font-mono text-[10px] text-[#71717a] uppercase">Demo</span>
-            <div className={`w-6 h-3 rounded-full relative transition-colors ${demoMode ? 'bg-[#10b981]' : 'bg-[#27272a]'}`}>
-              <div className={`absolute top-0.5 w-2 h-2 rounded-full bg-white transition-all ${demoMode ? 'left-3.5' : 'left-0.5'}`} />
+            <span className="font-mono text-[10px] text-[#52525b] uppercase">Demo</span>
+            <div className={`w-6 h-3 rounded-full relative transition-colors ${demoMode ? 'bg-[#FACC15]' : 'bg-[#27272a]'}`}>
+              <div className={`absolute top-0.5 w-2 h-2 rounded-full bg-[#09090b] transition-all ${demoMode ? 'left-3.5' : 'left-0.5'}`} />
             </div>
           </button>
+
+          {/* Cycle indicator */}
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-[10px] text-[#52525b]">CYCLE</span>
+            <span className="font-mono text-[12px] text-[#FACC15]">#{cycleCount}</span>
+          </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          <span className="font-mono text-[11px] text-[#71717a]">CYCLE #{cycleCount}</span>
-          <span className="font-mono text-[11px] text-[#a1a1aa]">{fmt(uptime)}</span>
+        {/* Right: uptime */}
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-[10px] text-[#3f3f46]">⏱</span>
+          <span className="font-mono text-[12px] text-[#71717a]">{fmt(uptime)}</span>
         </div>
       </header>
 
-      {/* Pipeline Status Bar */}
-      <div className="h-10 flex-shrink-0 border-b border-[#27272a] flex items-center justify-center gap-0 px-4 bg-[#0a0a0a]">
-        {PIPELINE_STAGES.map((stage, i) => (
-          <div key={stage} className="flex items-center">
-            {i > 0 && (
-              <svg width="40" height="10" className="mx-1">
-                <line x1="0" y1="5" x2="40" y2="5" stroke="#27272a" strokeWidth="1" strokeDasharray="4 4"
-                  className={pipelineState[i - 1] === 'done' ? 'animate-dash' : ''} />
-              </svg>
-            )}
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px]">
-                {pipelineState[i] === 'done' ? <span className="text-[#10b981]">{'\u2713'}</span>
-                  : pipelineState[i] === 'active' ? <span className="text-[#10b981]">{'\u25C9'}</span>
-                  : <span className="text-[#71717a]">{'\u00B7'}</span>}
-              </span>
-              <span className={`font-mono text-[10px] uppercase tracking-wider ${pipelineState[i] === 'active' ? 'text-[#10b981]' : pipelineState[i] === 'done' ? 'text-[#a1a1aa]' : 'text-[#71717a]'}`}>
-                {stage}
-              </span>
-            </div>
-          </div>
-        ))}
+      {/* Pipeline Visualization */}
+      <div className="flex-shrink-0 border-b border-[rgba(255,255,255,0.06)] bg-[#0a0a0f]">
+        <PipelineViz events={events} />
       </div>
 
       {/* Main 3-Column Layout */}
-      <div className="flex-1 flex overflow-hidden">
-        <div className="w-[280px] flex-shrink-0 border-r border-[#27272a] overflow-y-auto p-2">
+      <div className="flex-1 grid overflow-hidden" style={{ gridTemplateColumns: '240px 1fr 300px' }}>
+        {/* Left: Agent Cards */}
+        <div className="border-r border-[rgba(255,255,255,0.06)] overflow-y-auto p-2">
           <AgentNetwork events={events} />
         </div>
-        <div className="flex-1 flex flex-col min-w-0">
-          <div className="flex-1 min-h-0">
-            <TradeHistory trades={trades} />
+
+        {/* Center: Spread + Trades + Payments */}
+        <div className="flex flex-col min-w-0 overflow-hidden">
+          {/* Spread Indicator */}
+          <div className="flex-shrink-0 p-2 pb-0">
+            <SpreadIndicator events={events} />
           </div>
-          <div className="h-[200px] flex-shrink-0 border-t border-[#27272a]">
+
+          {/* Trade History */}
+          <div className="flex-1 min-h-0 p-2">
+            <TradeHistory trades={trades} events={events} />
+          </div>
+
+          {/* Payment Stream */}
+          <div className="h-[180px] flex-shrink-0 p-2 pt-0">
             <PaymentStream payments={payments} />
           </div>
         </div>
-        <div className="w-[320px] flex-shrink-0 border-l border-[#27272a] overflow-y-auto p-2">
+
+        {/* Right: Portfolio + Risk + Attestations */}
+        <div className="border-l border-[rgba(255,255,255,0.06)] overflow-y-auto p-2">
           <RiskDashboard portfolio={portfolio} pnlHistory={pnlHistory} />
-          <div className="border-t border-[#27272a] mt-2">
+          <div className="mt-1.5">
             <ChainAttestations attestations={attestations} />
           </div>
         </div>
