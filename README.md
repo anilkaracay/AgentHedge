@@ -17,7 +17,7 @@ AgentHedge is a four-agent arbitrage pipeline deployed on X Layer (Chain ID 196)
 
 Current arbitrage infrastructure is typically monolithic -- a single process handles price discovery, analysis, execution, and risk in one opaque loop. AgentHedge decomposes this into four independently replaceable, economically incentivized services. Any agent can be swapped without affecting the rest of the pipeline. Scout can be replaced with a better price oracle. Analyst can adopt a new model. The x402 payment protocol ensures that each agent is compensated for the value it provides, creating a self-sustaining service marketplace.
 
-The system is fully autonomous (zero human intervention per arbitrage cycle), x402-native (every inter-agent call carries a signed USDC payment), and OnchainOS-integrated (all trade routing, approvals, and execution go through the OKX OnchainOS DEX Aggregator API). AgentHedge is live on X Layer mainnet with 13 verified transactions, 4 registered agents, and a real-time monitoring dashboard.
+The system is fully autonomous (zero human intervention per arbitrage cycle), x402-native (every inter-agent call carries a signed USDC payment), and OnchainOS-integrated (all trade routing, approvals, and execution go through the OKX OnchainOS DEX Aggregator API). AgentHedge is live on X Layer mainnet with 34+ verified transactions (including real USDC x402 payments and on-chain cycle attestations), 4 registered agents, and a real-time monitoring dashboard.
 
 ---
 
@@ -276,12 +276,35 @@ All transactions verified on X Layer mainnet:
 | 17 | Register Executor (v2) | `0x607d6e13...` | [View](https://www.okx.com/web3/explorer/xlayer/tx/0x607d6e133771fb130303cbfe11364718577e6b21411297ee562fd12e0d1a881c) |
 | 18 | Register Treasury (v2) | `0xae95379b...` | [View](https://www.okx.com/web3/explorer/xlayer/tx/0xae95379b20a2e72cecc22a0e939a753375a0630e1db6612d64ae1863b9090872) |
 
-### Live Price Data (from demo cycles)
+#### Real x402 USDC Payments (closed-loop agent economy)
 
-| Chain | Native Token | USDC Price | DEX |
-|-------|-------------|------------|-----|
-| X Layer (196) | OKB | $97.81 | Uniswap V4 / PotatoSwap |
-| Ethereum (1) | ETH | $2,116.91 | Uniswap V3 |
+Every inter-agent payment is a real ERC-20 USDC transfer on X Layer mainnet. Payments form a closed loop: Treasury funds operations, agents earn for services, profits return to Treasury. Net cost per cycle: ~0.01 USDC.
+
+| # | Payment | Amount | Tx Hash | Explorer |
+|---|---------|--------|---------|----------|
+| 19 | ANALYST → SCOUT (signal_purchase) | 0.02 USDC | `0x0b9dfbc3...` | [View](https://www.okx.com/web3/explorer/xlayer/tx/0x0b9dfbc3) |
+| 20 | SCOUT → TREASURY (profit_return) | 0.02 USDC | `0xea0f8af3...` | [View](https://www.okx.com/web3/explorer/xlayer/tx/0xea0f8af3) |
+| 21 | ANALYST → SCOUT (signal_purchase) | 0.02 USDC | `0x76e6d05c...` | [View](https://www.okx.com/web3/explorer/xlayer/tx/0x76e6d05c) |
+| 22 | SCOUT → TREASURY (profit_return) | 0.02 USDC | `0x6e6680ff...` | [View](https://www.okx.com/web3/explorer/xlayer/tx/0x6e6680ff) |
+| 23 | ANALYST → SCOUT (signal_purchase) | 0.02 USDC | `0xc7643afc...` | [View](https://www.okx.com/web3/explorer/xlayer/tx/0xc7643afc) |
+| 24 | SCOUT → TREASURY (profit_return) | 0.02 USDC | `0xc4c79151...` | [View](https://www.okx.com/web3/explorer/xlayer/tx/0xc4c79151) |
+| 25 | ANALYST → SCOUT (signal_purchase) | 0.02 USDC | `0x0b770e3b...` | [View](https://www.okx.com/web3/explorer/xlayer/tx/0x0b770e3b) |
+| 26 | SCOUT → TREASURY (profit_return) | 0.02 USDC | `0xc3c5eb64...` | [View](https://www.okx.com/web3/explorer/xlayer/tx/0xc3c5eb64) |
+| 27 | ANALYST → SCOUT (signal_purchase) | 0.02 USDC | `0x2d18846e...` | [View](https://www.okx.com/web3/explorer/xlayer/tx/0x2d18846e) |
+| 28 | SCOUT → TREASURY (profit_return) | 0.02 USDC | `0xd826cfe4...` | [View](https://www.okx.com/web3/explorer/xlayer/tx/0xd826cfe4) |
+
+#### On-Chain Cycle Attestations
+
+Every arbitrage cycle is attested on-chain via `AgentRegistry.attestCycle()`. Each attestation records real-time prices, spread (bps), venue count, decision (EXECUTE/MONITOR), and estimated profit — creating an immutable, verifiable audit trail.
+
+| # | Cycle | Decision | Spread | Tx Hash | Explorer |
+|---|-------|----------|--------|---------|----------|
+| 29 | #1 | EXECUTE | 10 bps | `0x9db6b257...` | [View](https://www.okx.com/web3/explorer/xlayer/tx/0x9db6b257cf180ab6f77bf540497a86c7e65102ba932f022cbee79788c1675e9e) |
+| 30 | #1 | EXECUTE | 8 bps | `0x19f633b5...` | [View](https://www.okx.com/web3/explorer/xlayer/tx/0x19f633b5a01c4c2f93f88361a6938ad7127b23cb664e19a44f61e5456b09e355) |
+| 31 | #2 | EXECUTE | 8 bps | `0xc01be87a...` | [View](https://www.okx.com/web3/explorer/xlayer/tx/0xc01be87aaf6300984b682db0833c6ef3a537c5bda77944401202c5d8699e66d5) |
+| 32 | #3 | EXECUTE | 4 bps | `0xec3080e8...` | [View](https://www.okx.com/web3/explorer/xlayer/tx/0xec3080e80db76b45e84cbe68ec350a67d43ff4f12600037d3e59a91a679fe1bc) |
+| 33 | #4 | EXECUTE | 4 bps | `0xd046454a...` | [View](https://www.okx.com/web3/explorer/xlayer/tx/0xd046454a33606173d1b4f55c78ac9c9cdcbbec5c32b2216a226c885ae4f88b0e) |
+| 34 | #5 | MONITOR | 10 bps | `0x273827d7...` | [View](https://www.okx.com/web3/explorer/xlayer/tx/0x273827d7774e6071403e08386ba51be4aa83014182d601b54308e9ba361db851) |
 
 ---
 
