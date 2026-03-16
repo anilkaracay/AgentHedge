@@ -73,14 +73,14 @@ interface VenueLatencyProfile {
 }
 
 const VENUE_PROFILES: VenueLatencyProfile[] = [
-  { venue: 'okx',        latencyMs: 100,  noisePercent: 0.03 },
-  { venue: 'binance',    latencyMs: 150,  noisePercent: 0.03 },
-  { venue: 'bybit',      latencyMs: 200,  noisePercent: 0.05 },
-  { venue: 'gateio',     latencyMs: 500,  noisePercent: 0.08 },
-  { venue: 'kucoin',     latencyMs: 500,  noisePercent: 0.08 },
-  { venue: 'mexc',       latencyMs: 800,  noisePercent: 0.10 },
-  { venue: 'htx',        latencyMs: 1000, noisePercent: 0.12 },
-  { venue: 'xlayer-dex', latencyMs: 3000, noisePercent: 0.15 },
+  { venue: 'okx',        latencyMs: 100,  noisePercent: 0.01 },
+  { venue: 'binance',    latencyMs: 150,  noisePercent: 0.01 },
+  { venue: 'bybit',      latencyMs: 200,  noisePercent: 0.015 },
+  { venue: 'gateio',     latencyMs: 500,  noisePercent: 0.02 },
+  { venue: 'kucoin',     latencyMs: 500,  noisePercent: 0.02 },
+  { venue: 'mexc',       latencyMs: 800,  noisePercent: 0.025 },
+  { venue: 'htx',        latencyMs: 1000, noisePercent: 0.03 },
+  { venue: 'xlayer-dex', latencyMs: 3000, noisePercent: 0.04 },
 ];
 
 /**
@@ -91,8 +91,8 @@ const VENUE_PROFILES: VenueLatencyProfile[] = [
 export function applyMarketMicrostructure(scan: MultiVenueScan): MultiVenueScan {
   if (!isDemoMode()) return scan;
 
-  // Base market movement: random walk ±0.4% (normal crypto market activity)
-  const baseMovement = (Math.random() - 0.5) * 0.008;
+  // Base market movement: random walk ±0.1% (realistic micro-movement)
+  const baseMovement = (Math.random() - 0.5) * 0.002;
 
   const adjustedVenues = scan.venues.map(venue => {
     const profile = VENUE_PROFILES.find(p => p.venue === venue.venue);
