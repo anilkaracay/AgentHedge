@@ -423,20 +423,22 @@ footer .footer-links a:hover{color:var(--text)}
       }
     } catch(e) {}
 
-    // Verified real x402 USDC transfers
+    // Verified real x402 USDC transfers — link to wallet addresses (full tx hashes not stored in logs)
+    var ANALYST_EXPLORER = 'https://www.okx.com/web3/explorer/xlayer/address/0x103b2E12CDB4AaE9700b67f77c72394E26402d09';
+    var SCOUT_EXPLORER = 'https://www.okx.com/web3/explorer/xlayer/address/0xddEecB2b67564541D5E765c4351C579F5F73a41e';
     var x402Txs = [
-      { op: 'ANALYST \u2192 SCOUT signal (0.02 USDC)', hash: '0x0b9dfbc3' },
-      { op: 'SCOUT \u2192 TREASURY return (0.02 USDC)', hash: '0xea0f8af3' },
-      { op: 'ANALYST \u2192 SCOUT signal (0.02 USDC)', hash: '0x76e6d05c' },
-      { op: 'SCOUT \u2192 TREASURY return (0.02 USDC)', hash: '0x6e6680ff' },
-      { op: 'ANALYST \u2192 SCOUT signal (0.02 USDC)', hash: '0xc7643afc' },
-      { op: 'SCOUT \u2192 TREASURY return (0.02 USDC)', hash: '0xc4c79151' },
-      { op: 'ANALYST \u2192 SCOUT signal (0.02 USDC)', hash: '0x0b770e3b' },
-      { op: 'SCOUT \u2192 TREASURY return (0.02 USDC)', hash: '0xc3c5eb64' },
-      { op: 'ANALYST \u2192 SCOUT signal (0.02 USDC)', hash: '0x2d18846e' },
-      { op: 'SCOUT \u2192 TREASURY return (0.02 USDC)', hash: '0xd826cfe4' },
+      { op: 'ANALYST \u2192 SCOUT signal (0.02 USDC)', link: ANALYST_EXPLORER },
+      { op: 'SCOUT \u2192 TREASURY return (0.02 USDC)', link: SCOUT_EXPLORER },
+      { op: 'ANALYST \u2192 SCOUT signal (0.02 USDC)', link: ANALYST_EXPLORER },
+      { op: 'SCOUT \u2192 TREASURY return (0.02 USDC)', link: SCOUT_EXPLORER },
+      { op: 'ANALYST \u2192 SCOUT signal (0.02 USDC)', link: ANALYST_EXPLORER },
+      { op: 'SCOUT \u2192 TREASURY return (0.02 USDC)', link: SCOUT_EXPLORER },
+      { op: 'ANALYST \u2192 SCOUT signal (0.02 USDC)', link: ANALYST_EXPLORER },
+      { op: 'SCOUT \u2192 TREASURY return (0.02 USDC)', link: SCOUT_EXPLORER },
+      { op: 'ANALYST \u2192 SCOUT signal (0.02 USDC)', link: ANALYST_EXPLORER },
+      { op: 'SCOUT \u2192 TREASURY return (0.02 USDC)', link: SCOUT_EXPLORER },
     ];
-    x402Txs.forEach(function(t) { x402Count++; rows.push({ type: 'x402', op: t.op, hash: t.hash }); });
+    x402Txs.forEach(function(t) { x402Count++; rows.push({ type: 'x402', op: t.op, hash: '\u2014', link: t.link }); });
 
     // Hardcoded attestation txs (verified on mainnet) as fallback
     if (attestCount === 0) {
@@ -481,7 +483,7 @@ footer .footer-links a:hover{color:var(--text)}
       var typeColor = r.type === 'x402' ? 'color:#FACC15' : r.type === 'ATTEST' ? 'color:#10b981' : r.type === 'REGISTER' ? 'color:#a1a1aa' : 'color:#71717a';
       var hashDisplay = r.hash === '\u2014' ? '\u2014' : short(r.hash);
       var link = r.link || (r.hash !== '\u2014' ? EXPLORER + r.hash : '#');
-      var linkText = r.hash === '\u2014' ? 'Contract' : 'View';
+      var linkText = r.link && r.hash === '\u2014' ? 'Verify' : r.hash === '\u2014' ? 'Contract' : 'View';
       return '<tr><td style="' + typeColor + ';font-size:.7rem">' + r.type + '</td><td>' + r.op + '</td><td>' + hashDisplay + '</td><td><a href="' + link + '" target="_blank">' + linkText + '</a></td></tr>';
     }).join('');
 

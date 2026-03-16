@@ -85,7 +85,7 @@ export async function executeX402Payment(
     const receipt = await tx.wait();
     const explorerUrl = `${EXPLORER_BASE}${tx.hash}`;
 
-    logInfo('x402', `✓ ${memo}: ${amountUSDC} USDC  ${wallet.address.slice(0, 8)}→${toAddress.slice(0, 8)}  tx:${tx.hash.slice(0, 10)}`);
+    logInfo('x402', `✓ ${memo}: ${amountUSDC} USDC  ${wallet.address.slice(0, 8)}→${toAddress.slice(0, 8)}  tx:${tx.hash}`);
 
     return {
       success: true, txHash: tx.hash, from: wallet.address, to: toAddress,
