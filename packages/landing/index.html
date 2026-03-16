@@ -7,10 +7,10 @@
 <meta name="description" content="Four specialized AI agents forming a sequential arbitrage pipeline, coordinating through x402 micropayments on X Layer.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--bg:#09090b;--surface:#0f0f12;--border:#27272a;--border-hover:#10b981;--text:#fafafa;--text-secondary:#a1a1aa;--text-muted:#71717a;--accent:#10b981;--mono:'JetBrains Mono',monospace;--serif:'Instrument Serif',Georgia,serif;--sans:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif}
+:root{--bg:#09090b;--surface:#0f0f12;--border:#27272a;--border-hover:#10b981;--text:#fafafa;--text-secondary:#a1a1aa;--text-muted:#71717a;--accent:#10b981;--mono:'JetBrains Mono',monospace;--serif:'Instrument Serif',Georgia,serif;--sans:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif}
 html{scroll-behavior:smooth;font-size:16px}
 body{background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
 a{color:var(--text-secondary);text-decoration:none;transition:color .2s}
@@ -27,7 +27,7 @@ nav{position:sticky;top:0;z-index:100;background:rgba(9,9,11,.85);backdrop-filte
 
 /* LAYOUT */
 .container{max-width:1080px;margin:0 auto;padding:0 2rem}
-section{padding:6rem 0}
+section{padding:7rem 0}
 .section-label{font-family:var(--mono);font-size:.75rem;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.75rem}
 .section-heading{font-family:var(--serif);font-size:2rem;font-weight:400;color:var(--text);margin-bottom:1.5rem;line-height:1.2}
 .section-sub{color:var(--text-secondary);max-width:580px;font-size:.95rem;line-height:1.7;margin-bottom:2.5rem}
@@ -40,8 +40,10 @@ section{padding:6rem 0}
 .hero-sub{color:var(--text-secondary);font-size:1.05rem;line-height:1.7;max-width:580px;margin-bottom:2.5rem}
 
 /* TERMINAL */
-.terminal{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:1.25rem 1.5rem;font-family:var(--mono);font-size:.8rem;line-height:2;overflow-x:auto;margin-bottom:2.5rem;position:relative}
-.terminal::before{content:'LIVE';position:absolute;top:.75rem;right:1rem;font-size:.6rem;font-weight:600;color:var(--accent);letter-spacing:.1em;opacity:.7}
+.terminal{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:1.25rem 1.5rem;font-family:var(--mono);font-size:.8rem;line-height:2;overflow-x:auto;margin-bottom:2.5rem;position:relative}
+.terminal-badge{position:absolute;top:.7rem;right:1rem;display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:.7rem;font-weight:600;color:var(--accent);letter-spacing:.1em}
+.terminal-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:livePulse 2s ease-in-out infinite}
+@keyframes livePulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(16,185,129,.3)}50%{opacity:.7;box-shadow:0 0 8px 2px rgba(16,185,129,.4)}}
 .t-agent{color:var(--text-muted);display:inline-block;width:72px}
 .t-status{display:inline-block;width:88px}
 .t-status.active{color:var(--accent)}
@@ -52,7 +54,7 @@ section{padding:6rem 0}
 
 /* BUTTONS */
 .btn-row{display:flex;gap:1rem;flex-wrap:wrap}
-.btn{font-family:var(--mono);font-size:.8rem;font-weight:500;padding:.65rem 1.5rem;border-radius:4px;display:inline-flex;align-items:center;gap:.5rem;transition:all .2s;cursor:pointer;text-decoration:none}
+.btn{font-family:var(--mono);font-size:.8rem;font-weight:500;padding:.65rem 1.5rem;border-radius:3px;display:inline-flex;align-items:center;gap:.5rem;transition:all .2s;cursor:pointer;text-decoration:none}
 .btn-outline{border:1px solid var(--border);color:var(--text-secondary);background:transparent}
 .btn-outline:hover{border-color:var(--text-secondary);color:var(--text)}
 .btn-primary{border:1px solid var(--accent);color:var(--bg);background:var(--accent)}
@@ -60,17 +62,17 @@ section{padding:6rem 0}
 
 /* PIPELINE */
 .pipeline{display:flex;align-items:flex-start;gap:0;margin:2rem 0;overflow-x:auto;padding-bottom:1rem}
-.pipe-node{flex:1;min-width:180px;border:1px solid var(--border);padding:1.25rem;position:relative;transition:border-color .3s}
+.pipe-node{flex:1;min-width:180px;border:1px solid var(--border);padding:1.25rem;position:relative;transition:border-color .3s;border-radius:0}
 .pipe-node:hover{border-color:var(--border-hover)}
-.pipe-node:first-child{border-radius:6px 0 0 6px}
-.pipe-node:last-child{border-radius:0 6px 6px 0}
+.pipe-node:first-child{border-radius:4px 0 0 4px}
+.pipe-node:last-child{border-radius:0 4px 4px 0}
 .pipe-name{font-family:var(--mono);font-weight:600;font-size:.85rem;margin-bottom:.35rem}
 .pipe-role{font-size:.78rem;color:var(--text-secondary);margin-bottom:.65rem;line-height:1.4}
 .pipe-api{font-family:var(--mono);font-size:.65rem;color:var(--text-muted);background:rgba(255,255,255,.04);padding:.2rem .5rem;border-radius:3px;display:inline-block}
-.pipe-arrow{display:flex;flex-direction:column;align-items:center;justify-content:center;width:64px;min-width:64px;position:relative;padding-top:.5rem}
-.pipe-arrow-line{width:100%;height:1px;background:var(--border);position:relative}
-.pipe-arrow-line::after{content:'';position:absolute;right:-1px;top:-4px;border:4px solid transparent;border-left-color:var(--border)}
-.pipe-arrow-amt{font-family:var(--mono);font-size:.6rem;color:var(--text-muted);margin-top:.35rem;white-space:nowrap}
+.pipe-arrow{display:flex;flex-direction:column;align-items:center;justify-content:center;width:72px;min-width:72px;position:relative;padding-top:.5rem}
+.pipe-arrow-line{width:100%;height:2px;background:var(--border);position:relative}
+.pipe-arrow-line::after{content:'';position:absolute;right:-1px;top:-4px;border:5px solid transparent;border-left-color:var(--accent)}
+.pipe-arrow-amt{font-family:var(--mono);font-size:.65rem;color:var(--accent);margin-top:.4rem;white-space:nowrap;background:rgba(16,185,129,.08);padding:.1rem .45rem;border-radius:10px}
 .pipe-dot{position:absolute;width:6px;height:6px;border-radius:50%;background:var(--accent);top:50%;margin-top:-3px;left:0;animation:pipe-flow 3s ease-in-out infinite;opacity:0}
 .pipe-arrow:nth-child(2) .pipe-dot{animation-delay:0s}
 .pipe-arrow:nth-child(4) .pipe-dot{animation-delay:1s}
@@ -79,16 +81,16 @@ section{padding:6rem 0}
 .pipe-caption{text-align:center;color:var(--text-muted);font-size:.85rem;margin-top:1.5rem;font-style:italic;font-family:var(--serif)}
 
 /* AGENT CARDS */
-.agent-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:6px;overflow:hidden}
-.agent-card{background:var(--bg);padding:1.5rem;transition:background .2s}
+.agent-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:4px;overflow:hidden}
+.agent-card{background:var(--bg);padding:1.75rem 1.5rem;transition:background .2s}
 .agent-card:hover{background:var(--surface)}
 .agent-name{font-family:var(--mono);font-weight:600;font-size:.85rem;margin-bottom:.5rem}
 .agent-role{font-size:.82rem;color:var(--text-secondary);line-height:1.5;margin-bottom:1rem}
-.agent-meta{font-family:var(--mono);font-size:.7rem;color:var(--text-muted);line-height:1.9}
+.agent-meta{font-family:var(--mono);font-size:.7rem;color:var(--text-muted);line-height:2}
 .agent-meta span{color:var(--text-secondary)}
 
 /* METRICS */
-.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:6px;overflow:hidden;margin:2rem 0}
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:4px;overflow:hidden;margin:2rem 0}
 .metric{background:var(--bg);padding:1.5rem;text-align:center}
 .metric-val{font-family:var(--mono);font-size:1.75rem;font-weight:600;color:var(--text);margin-bottom:.35rem}
 .metric-val.accent{color:var(--accent)}
@@ -112,6 +114,9 @@ section{padding:6rem 0}
 .x402-text{font-size:.92rem;color:var(--text-secondary);line-height:1.75}
 .x402-text p{margin-bottom:1.25rem}
 
+/* TWO WAYS CODE BLOCKS */
+.way-code{font-family:var(--mono);font-size:.72rem;color:var(--text-secondary);line-height:1.8;background:#111115;padding:.75rem 1rem;border-radius:3px;border:1px solid rgba(255,255,255,.04);margin-top:.75rem}
+
 /* FOOTER */
 footer{border-top:1px solid var(--border);padding:2.5rem 0;text-align:center}
 footer p{font-size:.8rem;color:var(--text-muted);margin-bottom:.75rem}
@@ -120,7 +125,7 @@ footer .footer-links a{color:var(--text-muted)}
 footer .footer-links a:hover{color:var(--text)}
 
 /* FADE IN */
-.fade-in{opacity:0;transform:translateY(16px);transition:opacity .6s ease,transform .6s ease}
+.fade-in{opacity:0;transform:translateY(12px);transition:opacity .5s ease,transform .5s ease}
 .fade-in.visible{opacity:1;transform:translateY(0)}
 
 /* RESPONSIVE */
@@ -131,17 +136,20 @@ footer .footer-links a:hover{color:var(--text)}
   .pipe-arrow{width:100%;min-width:0;height:40px;flex-direction:row;padding:0}
   .pipe-arrow-line{width:1px;height:100%}
   .pipe-node{border-radius:0}
-  .pipe-node:first-child{border-radius:6px 6px 0 0}
-  .pipe-node:last-child{border-radius:0 0 6px 6px}
+  .pipe-node:first-child{border-radius:4px 4px 0 0}
+  .pipe-node:last-child{border-radius:0 0 4px 4px}
   .x402-grid{grid-template-columns:1fr}
   section{padding:4rem 0}
   .hero{padding:4rem 0 3rem}
+  .nav-links{gap:1rem;font-size:.75rem}
 }
 @media(max-width:480px){
   .agent-grid{grid-template-columns:1fr}
   .metrics{grid-template-columns:1fr 1fr}
   nav{padding:0 1rem}
   .container{padding:0 1rem}
+  .nav-links a:not(.btn-launch){display:none}
+  .hero h1{font-size:1.8rem}
 }
 </style>
 </head>
@@ -154,7 +162,7 @@ footer .footer-links a:hover{color:var(--text)}
     <a href="#agents">Agents</a>
     <a href="https://github.com/anilkaracay/AgentHedge" target="_blank">GitHub</a>
     <a href="https://www.okx.com/web3/explorer/xlayer/address/0xB8406ad5A79721d8D411837b68dfc5E4FF1A41e4" target="_blank">Explorer</a>
-    <a href="http://localhost:4006" class="btn-launch">Launch App →</a>
+    <a href="http://localhost:4006" class="btn-launch">Launch App &rarr;</a>
   </div>
 </nav>
 
@@ -168,6 +176,7 @@ footer .footer-links a:hover{color:var(--text)}
     </div>
 
     <div class="terminal fade-in" id="terminal">
+      <div class="terminal-badge"><span class="terminal-dot"></span> LIVE</div>
       <div id="venue-rows"></div>
       <div class="t-row" id="spread-row" style="margin-top:4px;border-top:1px solid #27272a;padding-top:4px"></div>
       <div class="t-row"><span class="t-agent">ANALYST</span><span class="t-status active">evaluating</span><span class="t-label">spread : </span><span class="t-val accent" id="tv-spread">--</span>&nbsp;&nbsp;&nbsp;<span class="t-label">net_profit : </span><span class="t-val accent" id="tv-profit">--</span>&nbsp;&nbsp;&nbsp;<span class="t-label">action : </span><span class="t-val accent" id="tv-action">IDLE</span></div>
@@ -177,7 +186,7 @@ footer .footer-links a:hover{color:var(--text)}
 
     <div class="btn-row fade-in">
       <a href="https://github.com/anilkaracay/AgentHedge" target="_blank" class="btn btn-outline">View on GitHub</a>
-      <a href="https://www.okx.com/web3/explorer/xlayer/address/0x6d62f601B8A0f57b712cc5dB60D270cBcb7aE0e6" target="_blank" class="btn btn-primary">Explorer</a>
+      <a href="https://www.okx.com/web3/explorer/xlayer/address/0xB8406ad5A79721d8D411837b68dfc5E4FF1A41e4" target="_blank" class="btn btn-primary">Explorer</a>
     </div>
   </section>
 
@@ -235,38 +244,34 @@ footer .footer-links a:hover{color:var(--text)}
     <div class="agent-grid fade-in">
       <div class="agent-card">
         <div class="agent-name">SCOUT</div>
-        <div class="agent-role">Compares CEX spot prices (OKX, Binance) against X Layer DEX prices for the same token, detecting CeDeFi spreads above 0.3%.</div>
+        <div class="agent-role">Compares CEX spot prices (OKX, Binance, Gate.io, MEXC) against X Layer DEX prices, detecting CeDeFi spreads across 8 venues simultaneously.</div>
         <div class="agent-meta">
-          Sells <span>signal @ 0.02 USDC</span><br>
-          Pays <span>--</span><br>
-          Port <span>3001</span>
+          Earns <span>0.02 USDC per signal</span><br>
+          Scans <span>8 venues in &lt;3s</span>
         </div>
       </div>
       <div class="agent-card">
         <div class="agent-name">ANALYST</div>
-        <div class="agent-role">Purchases Scout signals, validates freshness, re-quotes current prices, calculates net profit after all costs.</div>
+        <div class="agent-role">Purchases Scout signals, validates freshness, re-quotes current prices, calculates net profit after all costs including transfer fees.</div>
         <div class="agent-meta">
-          Sells <span>recommendation @ 0.03 USDC</span><br>
-          Pays <span>Scout 0.02 USDC</span><br>
-          Port <span>3002</span>
+          Earns <span>0.03 USDC per recommendation</span><br>
+          Pays <span>Scout 0.02 USDC per signal</span>
         </div>
       </div>
       <div class="agent-card">
         <div class="agent-name">EXECUTOR</div>
-        <div class="agent-role">Runs the full quote, approve, swap pipeline through OnchainOS DEX Aggregator with slippage protection.</div>
+        <div class="agent-role">Runs the full quote, approve, swap pipeline through OnchainOS DEX Aggregator with dual-sided liquidity analysis.</div>
         <div class="agent-meta">
-          Sells <span>--</span><br>
-          Pays <span>Analyst 0.03 USDC</span><br>
-          Port <span>3003</span>
+          Earns <span>10% of trade profit</span><br>
+          Pays <span>Analyst 0.03 USDC</span>
         </div>
       </div>
       <div class="agent-card">
         <div class="agent-name">TREASURY</div>
-        <div class="agent-role">Monitors portfolio via direct chain queries, enforces 5% daily loss limit, distributes profit via x402.</div>
+        <div class="agent-role">Monitors portfolio via on-chain balance queries, enforces 5% daily loss limit, funds operations and collects profit returns.</div>
         <div class="agent-meta">
-          Sells <span>--</span><br>
-          Pays <span>Executor 10% profit</span><br>
-          Port <span>3004</span>
+          Funds <span>operations per cycle</span><br>
+          Collects <span>profit returns from agents</span>
         </div>
       </div>
     </div>
@@ -278,19 +283,19 @@ footer .footer-links a:hover{color:var(--text)}
       <p class="section-label">Integration</p>
       <h2 class="section-heading">Two Ways to Use AgentHedge</h2>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);border:1px solid var(--border);border-radius:6px;overflow:hidden" class="fade-in">
-      <div style="background:var(--bg);padding:1.5rem">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);border:1px solid var(--border);border-radius:4px;overflow:hidden" class="fade-in">
+      <div style="background:var(--bg);padding:1.75rem 1.5rem">
         <div style="font-family:var(--mono);font-size:.85rem;font-weight:600;margin-bottom:.75rem">Run the Swarm</div>
-        <p style="font-size:.82rem;color:var(--text-secondary);line-height:1.6;margin-bottom:1rem">Deploy on your infrastructure. Full control over capital and strategy. Real-time dashboard monitoring. Your capital, your returns.</p>
-        <div style="font-family:var(--mono);font-size:.7rem;color:var(--text-muted);line-height:1.8">npm start<br>open http://localhost:4005</div>
+        <p style="font-size:.82rem;color:var(--text-secondary);line-height:1.6;margin-bottom:0">Deploy on your infrastructure. Full control over capital and strategy. Real-time dashboard monitoring.</p>
+        <div class="way-code">npm start<br>open http://localhost:4005</div>
       </div>
-      <div style="background:var(--bg);padding:1.5rem">
+      <div style="background:var(--bg);padding:1.75rem 1.5rem">
         <div style="font-family:var(--mono);font-size:.85rem;font-weight:600;margin-bottom:.75rem">Consume the Intelligence</div>
-        <p style="font-size:.82rem;color:var(--text-secondary);line-height:1.6;margin-bottom:1rem">No infrastructure needed. Pay per request via x402. Multi-venue price data and cost analysis. One HTTP call to integrate.</p>
-        <div style="font-family:var(--mono);font-size:.7rem;color:var(--text-muted);line-height:1.8">GET /api/opportunity-signal<br>0.02 USDC per request (x402)</div>
+        <p style="font-size:.82rem;color:var(--text-secondary);line-height:1.6;margin-bottom:0">No infrastructure needed. Pay per request via x402. Multi-venue price data and cost analysis.</p>
+        <div class="way-code">GET /api/opportunity-signal<br>0.02 USDC per request (x402)</div>
       </div>
     </div>
-    <p style="text-align:center;color:var(--text-muted);font-size:.82rem;margin-top:1.25rem;font-family:var(--serif);font-style:italic" class="fade-in">Coming soon: Managed Vault — deposit USDC, earn automated arbitrage returns.</p>
+    <p style="text-align:center;color:var(--text-muted);font-size:.82rem;margin-top:1.25rem;font-family:var(--serif);font-style:italic" class="fade-in">Coming soon: Managed Vault &mdash; deposit USDC, earn automated arbitrage returns.</p>
   </section>
 
   <!-- MAINNET -->
@@ -308,17 +313,17 @@ footer .footer-links a:hover{color:var(--text)}
     </div>
 
     <div class="metrics fade-in">
-      <div class="metric"><div class="metric-val" id="m-tx">--</div><div class="metric-label">Mainnet Transactions</div></div>
-      <div class="metric"><div class="metric-val" id="m-agents">4</div><div class="metric-label">Registered Agents</div></div>
-      <div class="metric"><div class="metric-val" id="m-attestations">--</div><div class="metric-label">On-Chain Attestations</div></div>
-      <div class="metric"><div class="metric-val" id="m-x402">--</div><div class="metric-label">x402 USDC Payments</div></div>
+      <div class="metric"><div class="metric-val" id="m-tx">0</div><div class="metric-label">Mainnet Transactions</div></div>
+      <div class="metric"><div class="metric-val" id="m-agents">0</div><div class="metric-label">Registered Agents</div></div>
+      <div class="metric"><div class="metric-val" id="m-attestations">0</div><div class="metric-label">On-Chain Attestations</div></div>
+      <div class="metric"><div class="metric-val" id="m-x402">0</div><div class="metric-label">x402 USDC Payments</div></div>
     </div>
 
     <div class="fade-in">
       <table class="tx-table">
         <thead><tr><th>Type</th><th>Operation</th><th>Tx Hash</th><th></th></tr></thead>
         <tbody id="tx-table-body">
-          <tr><td colspan="4" style="color:var(--text-muted);text-align:center;padding:1.5rem 0">Loading live transactions from X Layer...</td></tr>
+          <tr><td colspan="4" style="color:var(--text-muted);text-align:center;padding:1.5rem 0">Loading transactions...</td></tr>
         </tbody>
       </table>
       <p style="margin-top:1rem"><a href="https://www.okx.com/web3/explorer/xlayer/address/0xB8406ad5A79721d8D411837b68dfc5E4FF1A41e4" target="_blank" style="color:var(--accent);font-family:var(--mono);font-size:.8rem" id="explorer-link">View contract on X Layer Explorer &rarr;</a></p>
@@ -326,99 +331,115 @@ footer .footer-links a:hover{color:var(--text)}
   </section>
 
   <script>
-  // Dynamic mainnet tx section — fetches from orchestrator API + on-chain
+  // ── Dynamic mainnet tx section ──
   (async function loadMainnetData() {
-    const EXPLORER = 'https://www.okx.com/web3/explorer/xlayer/tx/';
-    const short = h => h.slice(0, 10) + '...' + h.slice(-6);
-    const rows = [];
-    let x402Count = 0, attestCount = 0;
+    var EXPLORER = 'https://www.okx.com/web3/explorer/xlayer/tx/';
+    var short = function(h) { return h.length > 16 ? h.slice(0, 10) + '...' + h.slice(-6) : h; };
+    var rows = [];
+    var x402Count = 0, attestCount = 0;
 
-    // Static foundation txs (always present)
-    const staticTxs = [
-      { type: 'DEPLOY', op: 'AgentRegistry v2', hash: '—', link: 'https://www.okx.com/explorer/xlayer/address/0xB8406ad5A79721d8D411837b68dfc5E4FF1A41e4' },
-      { type: 'REGISTER', op: 'Scout', hash: '0x6c61d69826fce25ea9948563b1cf43acfb0de3ed4d868907606052f533fe61f4' },
-      { type: 'REGISTER', op: 'Analyst', hash: '0xf8db1873a1402695c23512042ab426f81750970761dc5d2056ca2310faeb2046' },
-      { type: 'REGISTER', op: 'Executor', hash: '0x607d6e133771fb130303cbfe11364718577e6b21411297ee562fd12e0d1a881c' },
-      { type: 'REGISTER', op: 'Treasury', hash: '0xae95379b20a2e72cecc22a0e939a753375a0630e1db6612d64ae1863b9090872' },
+    var staticTxs = [
+      { type: 'DEPLOY', op: 'AgentRegistry v2 (attestations)', hash: '\u2014', link: 'https://www.okx.com/explorer/xlayer/address/0xB8406ad5A79721d8D411837b68dfc5E4FF1A41e4' },
+      { type: 'REGISTER', op: 'Scout agent', hash: '0x6c61d69826fce25ea9948563b1cf43acfb0de3ed4d868907606052f533fe61f4' },
+      { type: 'REGISTER', op: 'Analyst agent', hash: '0xf8db1873a1402695c23512042ab426f81750970761dc5d2056ca2310faeb2046' },
+      { type: 'REGISTER', op: 'Executor agent', hash: '0x607d6e133771fb130303cbfe11364718577e6b21411297ee562fd12e0d1a881c' },
+      { type: 'REGISTER', op: 'Treasury agent', hash: '0xae95379b20a2e72cecc22a0e939a753375a0630e1db6612d64ae1863b9090872' },
     ];
 
-    // Try orchestrator API for live x402 + attestation data
+    // Try live attestation data from orchestrator
     try {
-      const [attRes, histRes] = await Promise.allSettled([
-        fetch('http://localhost:4005/api/attestations').then(r => r.json()),
-        fetch('http://localhost:4005/api/live-prices').then(r => r.json()),
-      ]);
-
-      if (attRes.status === 'fulfilled' && attRes.value.attestations) {
-        attRes.value.attestations.forEach(a => {
+      var attRes = await fetch('http://localhost:4005/api/attestations');
+      var attData = await attRes.json();
+      if (attData.attestations) {
+        attData.attestations.forEach(function(a) {
           attestCount++;
-          rows.push({ type: 'ATTEST', op: `Cycle #${a.cycleId} ${a.decision} ${a.spreadBps}bps`, hash: a.txHash });
+          rows.push({ type: 'ATTEST', op: 'Cycle #' + a.cycleId + ' ' + a.decision + ' ' + a.spreadBps + 'bps', hash: a.txHash });
         });
       }
     } catch(e) {}
 
-    // Hardcoded real x402 txs (verified on mainnet)
-    const x402Txs = [
-      { op: 'ANALYST → SCOUT signal', hash: '0x0b9dfbc3' },
-      { op: 'SCOUT → TREASURY return', hash: '0xea0f8af3' },
-      { op: 'ANALYST → SCOUT signal', hash: '0x76e6d05c' },
-      { op: 'SCOUT → TREASURY return', hash: '0x6e6680ff' },
-      { op: 'ANALYST → SCOUT signal', hash: '0xc7643afc' },
-      { op: 'SCOUT → TREASURY return', hash: '0xc4c79151' },
-      { op: 'ANALYST → SCOUT signal', hash: '0x0b770e3b' },
-      { op: 'SCOUT → TREASURY return', hash: '0xc3c5eb64' },
-      { op: 'ANALYST → SCOUT signal', hash: '0x2d18846e' },
-      { op: 'SCOUT → TREASURY return', hash: '0xd826cfe4' },
+    // Verified real x402 USDC transfers
+    var x402Txs = [
+      { op: 'ANALYST \u2192 SCOUT signal (0.02 USDC)', hash: '0x0b9dfbc3' },
+      { op: 'SCOUT \u2192 TREASURY return (0.02 USDC)', hash: '0xea0f8af3' },
+      { op: 'ANALYST \u2192 SCOUT signal (0.02 USDC)', hash: '0x76e6d05c' },
+      { op: 'SCOUT \u2192 TREASURY return (0.02 USDC)', hash: '0x6e6680ff' },
+      { op: 'ANALYST \u2192 SCOUT signal (0.02 USDC)', hash: '0xc7643afc' },
+      { op: 'SCOUT \u2192 TREASURY return (0.02 USDC)', hash: '0xc4c79151' },
+      { op: 'ANALYST \u2192 SCOUT signal (0.02 USDC)', hash: '0x0b770e3b' },
+      { op: 'SCOUT \u2192 TREASURY return (0.02 USDC)', hash: '0xc3c5eb64' },
+      { op: 'ANALYST \u2192 SCOUT signal (0.02 USDC)', hash: '0x2d18846e' },
+      { op: 'SCOUT \u2192 TREASURY return (0.02 USDC)', hash: '0xd826cfe4' },
     ];
-    x402Txs.forEach(t => { x402Count++; rows.push({ type: 'x402', op: t.op + ' (0.02 USDC)', hash: t.hash }); });
+    x402Txs.forEach(function(t) { x402Count++; rows.push({ type: 'x402', op: t.op, hash: t.hash }); });
 
-    // Also count live x402 payments from orchestrator
+    // Hardcoded attestation txs (verified on mainnet) as fallback
+    if (attestCount === 0) {
+      var attTxs = [
+        { op: 'Cycle #1 EXECUTE 8bps', hash: '0x19f633b5a01c4c2f93f88361a6938ad7127b23cb664e19a44f61e5456b09e355' },
+        { op: 'Cycle #2 EXECUTE 8bps', hash: '0xc01be87aaf6300984b682db0833c6ef3a537c5bda77944401202c5d8699e66d5' },
+        { op: 'Cycle #3 EXECUTE 4bps', hash: '0xec3080e80db76b45e84cbe68ec350a67d43ff4f12600037d3e59a91a679fe1bc' },
+        { op: 'Cycle #4 EXECUTE 4bps', hash: '0xd046454a33606173d1b4f55c78ac9c9cdcbbec5c32b2216a226c885ae4f88b0e' },
+        { op: 'Cycle #5 MONITOR 10bps', hash: '0x273827d7774e6071403e08386ba51be4aa83014182d601b54308e9ba361db851' },
+      ];
+      attTxs.forEach(function(t) { attestCount++; rows.push({ type: 'ATTEST', op: t.op, hash: t.hash }); });
+    }
+
+    // WebSocket for real-time updates
     try {
-      const ws = new WebSocket('ws://localhost:4005');
-      ws.onmessage = (msg) => {
+      var ws = new WebSocket('ws://localhost:4005');
+      ws.onmessage = function(msg) {
         try {
-          const evt = JSON.parse(msg.data);
-          if (evt.type === 'x402_payment' && evt.data?.txHash) {
+          var evt = JSON.parse(msg.data);
+          if (evt.type === 'x402_payment' && evt.data && evt.data.txHash) {
             x402Count++;
             document.getElementById('m-x402').textContent = x402Count;
             document.getElementById('m-tx').textContent = 18 + x402Count + attestCount;
           }
-          if (evt.type === 'chain_attestation' && evt.data?.txHash) {
+          if (evt.type === 'chain_attestation' && evt.data && evt.data.txHash) {
             attestCount++;
             document.getElementById('m-attestations').textContent = attestCount;
+            document.getElementById('m-tx').textContent = 18 + x402Count + attestCount;
           }
         } catch(e) {}
       };
     } catch(e) {}
 
     // Render table
-    const tbody = document.getElementById('tx-table-body');
-    const allRows = [];
+    var tbody = document.getElementById('tx-table-body');
+    var allRows = [];
+    rows.reverse().forEach(function(r) { allRows.push(r); });
+    staticTxs.forEach(function(t) { allRows.push(t); });
 
-    // Static rows first
-    staticTxs.forEach(t => allRows.push(t));
-    // Then dynamic attestation + x402 rows (newest first)
-    rows.reverse().forEach(r => allRows.push(r));
-
-    // Show latest 12 rows
-    const display = allRows.slice(0, 15);
-    tbody.innerHTML = display.map(r => {
-      const typeColor = r.type === 'x402' ? 'color:#FACC15' : r.type === 'ATTEST' ? 'color:#10b981' : r.type === 'REGISTER' ? 'color:#a1a1aa' : 'color:#71717a';
-      const hashDisplay = r.hash === '—' ? '—' : short(r.hash);
-      const link = r.link || (r.hash !== '—' ? EXPLORER + r.hash : '#');
-      const linkText = r.hash === '—' ? 'Contract' : 'View';
-      return `<tr><td style="${typeColor};font-size:.7rem">${r.type}</td><td>${r.op}</td><td>${hashDisplay}</td><td><a href="${link}" target="_blank">${linkText}</a></td></tr>`;
+    var display = allRows.slice(0, 15);
+    tbody.innerHTML = display.map(function(r) {
+      var typeColor = r.type === 'x402' ? 'color:#FACC15' : r.type === 'ATTEST' ? 'color:#10b981' : r.type === 'REGISTER' ? 'color:#a1a1aa' : 'color:#71717a';
+      var hashDisplay = r.hash === '\u2014' ? '\u2014' : short(r.hash);
+      var link = r.link || (r.hash !== '\u2014' ? EXPLORER + r.hash : '#');
+      var linkText = r.hash === '\u2014' ? 'Contract' : 'View';
+      return '<tr><td style="' + typeColor + ';font-size:.7rem">' + r.type + '</td><td>' + r.op + '</td><td>' + hashDisplay + '</td><td><a href="' + link + '" target="_blank">' + linkText + '</a></td></tr>';
     }).join('');
 
-    // Update metrics
-    // 18 foundation txs (4 fund OKB + 3 fund USDC + 4 register v1 + 2 recordSuccess + 1 deploy v2 + 4 register v2)
-    const baseTx = 18;
-    const totalTx = baseTx + x402Count + attestCount;
-    document.getElementById('m-tx').textContent = totalTx;
-    document.getElementById('m-attestations').textContent = attestCount || rows.filter(r => r.type === 'ATTEST').length || '6';
-    document.getElementById('m-x402').textContent = x402Count || '10';
-    document.getElementById('explorer-link').textContent = 'View all ' + totalTx + '+ transactions on X Layer Explorer →';
+    // Update metrics with count-up animation
+    var baseTx = 18;
+    var totalTx = baseTx + x402Count + attestCount;
+    animateCount(document.getElementById('m-tx'), totalTx);
+    animateCount(document.getElementById('m-agents'), 4);
+    animateCount(document.getElementById('m-attestations'), attestCount);
+    animateCount(document.getElementById('m-x402'), x402Count);
+    document.getElementById('explorer-link').textContent = 'View all ' + totalTx + '+ transactions on X Layer Explorer \u2192';
   })();
+
+  function animateCount(el, target, duration) {
+    if (!el || target <= 0) { if (el) el.textContent = target; return; }
+    duration = duration || 800;
+    var start = 0, step = target / (duration / 16);
+    var timer = setInterval(function() {
+      start += step;
+      if (start >= target) { el.textContent = target; clearInterval(timer); }
+      else { el.textContent = Math.floor(start); }
+    }, 16);
+  }
   </script>
 
   <!-- x402 -->
@@ -441,11 +462,9 @@ footer .footer-links a:hover{color:var(--text)}
             <tr><td>Analyst</td><td>Scout</td><td style="color:var(--accent)">0.02 USDC</td><td>Signal purchase</td></tr>
             <tr><td>Executor</td><td>Analyst</td><td style="color:var(--accent)">0.03 USDC</td><td>Recommendation</td></tr>
             <tr><td>Treasury</td><td>Executor</td><td style="color:var(--accent)">10% profit</td><td>Execution fee</td></tr>
-            <tr><td>Treasury</td><td>Treasury</td><td style="color:var(--accent)">5% profit</td><td>Management fee</td></tr>
-            <tr><td>--</td><td>Pool</td><td style="color:var(--accent)">85% profit</td><td>Capital return</td></tr>
           </tbody>
         </table>
-        <p style="margin-top:1.25rem;font-size:.82rem;color:var(--text-muted);line-height:1.6">Fixed cost per cycle: 0.05 USDC. A cycle is profitable only when the arbitrage spread exceeds this cost plus slippage and gas.</p>
+        <p style="margin-top:1.25rem;font-size:.82rem;color:var(--text-muted);line-height:1.6">Fixed cost per cycle: 0.05 USDC. Closed-loop economy: agents earn for services, profits return to Treasury. Net cost ~0.01 USDC per cycle.</p>
       </div>
     </div>
   </section>
@@ -455,10 +474,10 @@ footer .footer-links a:hover{color:var(--text)}
 <!-- FOOTER -->
 <footer>
   <div class="container">
-    <p>Built by Cayvox Labs for the X Layer Onchain OS AI Hackathon, March 2026</p>
+    <p>Built for the X Layer Onchain OS AI Hackathon, March 2026</p>
     <div class="footer-links">
       <a href="https://github.com/anilkaracay/AgentHedge" target="_blank">GitHub</a>
-      <a href="https://www.okx.com/web3/explorer/xlayer/address/0x6d62f601B8A0f57b712cc5dB60D270cBcb7aE0e6" target="_blank">X Layer Explorer</a>
+      <a href="https://www.okx.com/web3/explorer/xlayer/address/0xB8406ad5A79721d8D411837b68dfc5E4FF1A41e4" target="_blank">X Layer Explorer</a>
       <a href="https://web3.okx.com/build/dev-portal" target="_blank">OnchainOS Docs</a>
     </div>
   </div>
@@ -466,50 +485,41 @@ footer .footer-links a:hover{color:var(--text)}
 
 <script>
 // Fade-in on scroll
-const observer = new IntersectionObserver((entries) => {
-  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); observer.unobserve(e.target); }});
-}, { threshold: 0.15 });
-document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+var observer = new IntersectionObserver(function(entries) {
+  entries.forEach(function(e) { if (e.isIntersecting) { e.target.classList.add('visible'); observer.unobserve(e.target); }});
+}, { threshold: 0.1 });
+document.querySelectorAll('.fade-in').forEach(function(el) { observer.observe(el); });
 
-// Smooth value update with fade
+// Smooth value update
 function setVal(id, val) {
-  const el = document.getElementById(id);
+  var el = document.getElementById(id);
   if (!el || el.textContent === val) return;
   el.style.transition = 'opacity 0.15s';
   el.style.opacity = '0.3';
-  setTimeout(() => { el.textContent = val; el.style.opacity = '1'; }, 150);
+  setTimeout(function() { el.textContent = val; el.style.opacity = '1'; }, 150);
 }
 
-// Live CeDeFi data from orchestrator API
-const API_URL = '/api/live-prices';
-
+// Live CeDeFi data
+var API_URL = '/api/live-prices';
 async function fetchLive() {
   try {
-    const res = await fetch(API_URL);
+    var res = await fetch(API_URL);
     if (!res.ok) throw new Error('API ' + res.status);
-    const d = await res.json();
+    var d = await res.json();
 
-    // Build venue price rows
-    const venueEl = document.getElementById('venue-rows');
-    const spreadEl = document.getElementById('spread-row');
+    var venueEl = document.getElementById('venue-rows');
+    var spreadEl = document.getElementById('spread-row');
     if (venueEl && d.scans && d.scans.length > 0) {
-      var scan = d.scans[0]; // best token
-      var venueHtml = '<div style="margin-bottom:2px">' +
-        '<span class="t-agent">SCOUT</span>' +
-        '<span class="t-status scanning">scanning</span>' +
-        '<span class="t-label">' + scan.token + '/USDT</span>&nbsp;&nbsp;&nbsp;' +
-        '<span class="t-val">' + scan.venues.length + ' venues in ' + scan.scanDuration + 'ms</span></div>';
+      var scan = d.scans[0];
+      var venueHtml = '<div style="margin-bottom:2px"><span class="t-agent">SCOUT</span><span class="t-status scanning">scanning</span><span class="t-label">' + scan.token + '/USDT</span>&nbsp;&nbsp;&nbsp;<span class="t-val">' + scan.venues.length + ' venues in ' + scan.scanDuration + 'ms</span></div>';
       venueHtml += scan.venues.map(function(v) {
         var tag = v.venue === scan.cheapest.venue ? ' << BUY' : v.venue === scan.mostExpensive.venue ? ' << SELL' : '';
         var cls = tag ? ' accent' : '';
-        return '<span class="t-label" style="margin-left:84px">' + v.venue.padEnd(12,' ').replace(/ /g,'&nbsp;') + '</span>' +
-          '<span class="t-val' + cls + '">$' + v.price.toFixed(4) + '</span>' +
-          '<span class="t-label">&nbsp;(' + v.latency + 'ms)' + (tag ? '&nbsp;<span class="t-val accent">' + tag + '</span>' : '') + '</span><br>';
+        return '<span class="t-label" style="margin-left:84px">' + v.venue.padEnd(12,' ').replace(/ /g,'&nbsp;') + '</span><span class="t-val' + cls + '">$' + v.price.toFixed(4) + '</span><span class="t-label">&nbsp;(' + v.latency + 'ms)' + (tag ? '&nbsp;<span class="t-val accent">' + tag + '</span>' : '') + '</span><br>';
       }).join('');
       venueEl.innerHTML = venueHtml;
       if (spreadEl) {
-        spreadEl.innerHTML = '<span class="t-agent" style="width:84px;display:inline-block"></span>' +
-          '<span class="t-label">spread : </span><span class="t-val accent">$' + scan.cheapest.price.toFixed(2) + ' -> $' + scan.mostExpensive.price.toFixed(2) + ' = ' + scan.spread.toFixed(4) + '%</span>';
+        spreadEl.innerHTML = '<span class="t-agent" style="width:84px;display:inline-block"></span><span class="t-label">spread : </span><span class="t-val accent">$' + scan.cheapest.price.toFixed(2) + ' -> $' + scan.mostExpensive.price.toFixed(2) + ' = ' + scan.spread.toFixed(4) + '%</span>';
       }
     }
 
@@ -520,12 +530,8 @@ async function fetchLive() {
     setVal('tv-port', '$' + Number(d.treasury.portfolio).toFixed(2));
     var pnl = Number(d.treasury.dailyPnl);
     setVal('tv-pnl', (pnl >= 0 ? '+' : '') + '$' + pnl.toFixed(2));
-
-    // Metrics — don't overwrite dynamic tx/attestation counts from loadMainnetData
     setVal('m-agents', String(d.meta.agentsRegistered));
-  } catch (e) {
-    // API offline — keep last values
-  }
+  } catch (e) {}
 }
 
 fetchLive();
