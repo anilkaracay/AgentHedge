@@ -503,6 +503,82 @@ The flywheel effect: more agents registered on the registry increases signal qua
 
 ---
 
+## Roadmap
+
+### Phase 1: Arbitrage Engine (Current -- Hackathon)
+
+✅ 4-agent pipeline: Scout → Analyst → Executor → Treasury
+✅ 5 OnchainOS modules (Swap, Market, Balance, Gateway, Portfolio), 10+ endpoints
+✅ Real x402 USDC micropayments -- 10 verified mainnet ERC-20 transfers
+✅ On-chain cycle attestations -- 6 verified mainnet attestation transactions
+✅ CeDeFi arbitrage: X Layer DEX + 3-4 CEX venues (OKX, MEXC, Gate.io)
+✅ Closed-loop agent economy: Treasury funds operations → agents earn → profits return
+✅ Dual-sided liquidity analysis (OnchainOS DEX quote + CEX order book depth)
+✅ Real-time price verification -- dashboard prices match live exchange prices (verified)
+✅ Professional fee tier modeling (retail / professional / VIP)
+✅ Market microstructure simulation for realistic demo spread generation
+✅ AgentRegistry smart contract with cycle attestations (deployed on mainnet)
+✅ Telegram bot: trade alerts, /status, /pnl, /pause, /resume commands
+✅ Bloomberg-style React dashboard with real-time WebSocket updates
+✅ Operator controls: pause/resume via Telegram and REST API
+✅ 34+ verified mainnet transactions across contract deployment, agent registration, x402 payments, and attestations
+
+### Phase 2: Multi-Asset Expansion (Q2 2026)
+
+- **Multi-token scanning**: OKB, USDT, WETH, WBTC -- any token with X Layer DEX liquidity
+- **Stablecoin depeg arbitrage**: USDT/USDC spread monitoring across venues -- profit from temporary depegs
+- **Dynamic token discovery**: Auto-detect new tokens with sufficient DEX liquidity via OnchainOS token API
+- **Concurrent pipelines**: Run multiple token pipelines in parallel (OKB + USDT + WETH simultaneously)
+- **Expanded CEX coverage**: Add Binance full integration, Bybit, Crypto.com, Bitget
+- **Historical performance tracking**: On-chain attestation analytics -- win rate, avg spread, cumulative P&L over time
+
+### Phase 3: Multi-Chain Arbitrage (Q3 2026)
+
+- **Cross-chain DEX scanning**: X Layer + Ethereum + Arbitrum + Base -- same token, different chain DEX prices
+- **OnchainOS multi-chain**: Leverage OnchainOS aggregator/quote on chainIndex 1 (ETH), 42161 (Arbitrum), 8453 (Base)
+- **Bridge-aware cost calculator**: Factor in bridge fees, time, and slippage for cross-chain routes
+- **Chain-specific Executor agents**: Dedicated Executor per chain with optimized gas strategies
+- **MEV protection**: Private transaction submission on chains with MEV risk
+- **Cross-chain attestations**: Unified audit trail across multiple chains
+
+### Phase 4: Managed Vault Protocol (Q4 2026)
+
+- **AgentHedge Vault**: ERC-4626 vault contract on X Layer
+  - Users deposit USDC → vault funds the agent swarm → arbitrage profits return to vault → users earn yield
+  - No lock-up period -- withdraw anytime
+  - Transparent: every trade attested on-chain, every P&L verifiable
+- **Automated capital allocation**: Treasury dynamically distributes vault capital across venues based on liquidity depth
+- **Risk tiers**:
+  - Conservative: stablecoin arbitrage only, lower APY, near-zero risk
+  - Balanced: OKB + stablecoin arbitrage, medium APY
+  - Aggressive: all tokens including volatile pairs, highest APY
+- **Performance fees**: 15% of profits (industry standard) -- protocol revenue
+- **On-chain reporting**: Monthly vault performance attestations, fully auditable
+
+### Phase 5: Agent-as-a-Service / Intelligence Marketplace (2027)
+
+- **x402 Price Oracle API**: External projects pay per query for multi-venue price data
+  - `GET /api/price/OKB` → returns multi-venue price comparison → costs 0.01 USDC via x402
+  - Any DeFi protocol can consume Scout's intelligence without running their own infrastructure
+- **Pluggable agent architecture**: Third-party developers create custom Scout or Analyst agents
+  - Register on AgentRegistry → compete for routing based on signal quality and price
+  - Better signals → more x402 purchases → market-driven agent evolution
+- **Agent reputation system**: On-chain track record of each agent's prediction accuracy
+  - Agents with higher accuracy attract more x402 payments
+  - Natural selection -- bad agents earn nothing, good agents thrive
+- **White-label swarm**: Other protocols deploy their own AgentHedge instance
+  - DeFi protocols embed arbitrage as a service
+  - Institutional desks license the swarm for their own strategies
+
+### Phase 6: Autonomous Agent Economy (2027+)
+
+- **Self-improving agents**: Agents use historical attestation data to optimize strategies
+- **Cross-protocol arbitrage**: Lending rate arbitrage (Aave vs Compound), yield arbitrage, liquidation opportunities
+- **DAO governance**: Token holders vote on vault parameters, fee structures, and new agent proposals
+- **Fully autonomous treasury**: No human intervention -- Treasury agent manages all capital allocation, risk, and rebalancing based on market conditions
+
+---
+
 ## Team
 
 | Member | Role | Background |
