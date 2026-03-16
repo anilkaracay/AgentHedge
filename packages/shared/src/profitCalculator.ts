@@ -14,8 +14,8 @@ const FEE_TIERS = {
   },
   professional: {
     cex: { okx: 0.0002, binance: 0.0002, gateio: 0.0005, bybit: 0.0002, kucoin: 0.0003, mexc: 0.0001, htx: 0.0005 } as Record<string, number>,
-    dex: 0.003,     // 0.3% standard AMM (maker/taker doesn't apply to AMM)
-    label: 'Professional (maker 0.02% + DEX 0.3%)',
+    dex: 0.0005,    // 0.05% Uniswap V3 low-fee pool tier on X Layer
+    label: 'Professional (maker 0.02% + DEX 0.05%)',
   },
   vip: {
     cex: { okx: 0.0001, binance: 0.0001, gateio: 0.0002, bybit: 0.0001, kucoin: 0.0001, mexc: 0.00005, htx: 0.0002 } as Record<string, number>,
