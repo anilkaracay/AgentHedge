@@ -22,7 +22,7 @@ const AGENT_REGISTRY_ABI = [
   'event FailureRecorded(string indexed agentId, uint256 total)',
   'event AgentDeactivated(string indexed agentId)',
   'event CycleAttested(uint256 indexed cycleId, uint16 spreadBps, uint8 decision, int256 estimatedProfitUsd, uint256 timestamp)',
-] as const;
+];
 
 export interface OnChainAgent {
   wallet: string;
@@ -97,7 +97,12 @@ export async function attestCycleOnChain(
   try {
     const provider = new ethers.JsonRpcProvider(config.XLAYER_RPC);
     const signer = wallet.connect(provider);
-    const registry = getRegistryContract(signer);
+
+    // Build contract directly with fresh ABI to avoid any caching issues
+    const attestABI = [
+      'function attestCycle(uint256 _cycleId, uint256 _bestBidPrice, uint256 _bestAskPrice, uint16 _spreadBps, uint8 _venueCount, bytes32 _buyVenueHash, bytes32 _sellVenueHash, uint8 _decision, int256 _estimatedProfitUsd) external',
+    ];
+    const registry = new ethers.Contract(config.REGISTRY_ADDRESS, attestABI, signer);
 
     const bestBidPrice = ethers.parseUnits(params.bestBidPrice.toFixed(6), 18);
     const bestAskPrice = ethers.parseUnits(params.bestAskPrice.toFixed(6), 18);
@@ -115,12 +120,14 @@ export async function attestCycleOnChain(
       sellVenueHash,
       decision,
       params.estimatedProfitCents,
-      { gasLimit: 200000 }
+      { gasLimit: 300000 }
     );
 
     const receipt = await tx.wait();
     return { txHash: receipt.hash };
-  } catch {
+  } catch (err: any) {
+    const { logError } = await import('./logger.js');
+    logError('attestation', `attestCycleOnChain failed: ${err.message?.slice(0, 200)}`);
     return null;
   }
 }
