@@ -5,7 +5,6 @@ import PaymentStream from './components/PaymentStream';
 import TradeHistory from './components/TradeHistory';
 import RiskDashboard from './components/RiskDashboard';
 import ChainAttestations from './components/ChainAttestations';
-import SpreadIndicator from './components/SpreadIndicator';
 import PipelineViz from './components/PipelineViz';
 
 function App() {
@@ -89,11 +88,6 @@ function App() {
 
         {/* Center: Spread + Trades + Payments */}
         <div className="flex flex-col min-w-0 overflow-hidden">
-          {/* Spread Indicator */}
-          <div className="flex-shrink-0 p-2 pb-0">
-            <SpreadIndicator events={events} />
-          </div>
-
           {/* Trade History */}
           <div className="flex-1 min-h-0 p-2">
             <TradeHistory trades={trades} events={events} />
