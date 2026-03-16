@@ -44,3 +44,7 @@ export { isDemoMode, getDemoPortfolio, updateDemoBalance, maybeInjectVolatilityS
 export type { VenueBalance, DemoPortfolio } from './demoMode.js';
 export { AgentHedgeTelegramBot } from './telegramBot.js';
 export type { TelegramConfig, SystemStateAccessor } from './telegramBot.js';
+export { executeX402Payment, resetNonces, getAgentUSDCBalance, logAllAgentBalances } from './x402Real.js';
+export type { X402PaymentResult } from './x402Real.js';
+export { executeFullPaymentCycle, executeMonitorPaymentCycle } from './x402PaymentFlow.js';
+export type { AgentKeys, AgentAddresses, PaymentFlowResult } from './x402PaymentFlow.js';

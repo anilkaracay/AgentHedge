@@ -24,7 +24,7 @@ export default function PaymentStream({ payments }: Props) {
             <span className="font-mono text-[11px] text-[#3f3f46]">Waiting for x402 payments...</span>
           </div>
         ) : (
-          payments.map((p, i) => (
+          payments.map((p: any, i) => (
             <div
               key={`${p.timestamp}-${i}`}
               className={`px-3 py-1.5 border-b border-[rgba(255,255,255,0.03)] font-mono text-[11px] flex items-center gap-2 ${i === 0 ? 'animate-payment-flash' : ''}`}
@@ -47,7 +47,25 @@ export default function PaymentStream({ payments }: Props) {
               </span>
               <span className="text-[#FACC15] w-[72px] flex-shrink-0 text-right">{p.amount.toFixed(2)}</span>
               <span className="text-[#3f3f46] flex-shrink-0">USDC</span>
-              <span className="text-[#3f3f46] truncate text-[10px]">{p.purpose}</span>
+              {/* ON-CHAIN badge */}
+              {p.onChain && (
+                <span className="flex-shrink-0 text-[8px] text-[#FACC15] border border-[rgba(250,204,21,0.3)] rounded-[2px] px-1 py-[1px] leading-none uppercase">
+                  on-chain
+                </span>
+              )}
+              <span className="text-[#3f3f46] truncate text-[10px] flex-1 min-w-0">{p.purpose}</span>
+              {/* Explorer link */}
+              {p.txHash && (
+                <a
+                  href={p.explorerUrl || `https://www.okx.com/explorer/xlayer/tx/${p.txHash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#FACC15]/50 hover:text-[#FACC15] flex-shrink-0 transition-colors text-[11px]"
+                  title={p.txHash}
+                >
+                  ↗
+                </a>
+              )}
             </div>
           ))
         )}

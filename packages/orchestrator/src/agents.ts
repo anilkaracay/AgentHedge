@@ -15,14 +15,33 @@ import {
   TRACKED_TOKENS, USDC_XLAYER,
   createX402Middleware, callPaidEndpoint,
   attestCycleOnChain,
+  executeFullPaymentCycle, executeMonitorPaymentCycle, logAllAgentBalances,
 } from '@agenthedge/shared';
 import type {
   ArbitrageOpportunity, ExecutionRecommendation,
   PortfolioSnapshot, X402RouteConfig,
+  AgentKeys, AgentAddresses,
 } from '@agenthedge/shared';
 
 const NATIVE = config.NATIVE_TOKEN_ADDRESS;
 function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
+
+// ── Real x402 payment config ──
+const isRealPayments = () => process.env.X402_REAL_PAYMENTS === 'true';
+
+const agentKeys: AgentKeys = {
+  scout: config.SCOUT_PK,
+  analyst: config.ANALYST_PK,
+  executor: config.EXECUTOR_PK,
+  treasury: config.TREASURY_PK,
+};
+
+const agentAddresses: AgentAddresses = {
+  scout: new ethers.Wallet(config.SCOUT_PK).address,
+  analyst: new ethers.Wallet(config.ANALYST_PK).address,
+  executor: new ethers.Wallet(config.EXECUTOR_PK).address,
+  treasury: new ethers.Wallet(config.TREASURY_PK).address,
+};
 
 let latestSignal: ArbitrageOpportunity | null = null;
 const demoTradeHistory: any[] = [];
@@ -259,12 +278,15 @@ async function startAnalyst(): Promise<void> {
         let totalSessionProfit = 0;
         let tradeCount = 0;
 
-        // x402 payments for signal + recommendation (once per cycle)
-        const p1 = { from: 'analyst', to: 'scout', amount: 0.02, purpose: 'signal_purchase', timestamp: now };
-        const p2 = { from: 'executor', to: 'analyst', amount: 0.03, purpose: 'analysis_purchase', timestamp: now };
-        demoPaymentHistory.push(p1, p2);
-        eventBus.emitDashboardEvent({ type: 'x402_payment', data: p1, timestamp: now });
-        eventBus.emitDashboardEvent({ type: 'x402_payment', data: p2, timestamp: now });
+        // x402 payments — real or simulated
+        // (Real payments happen AFTER trades complete, simulated happen now)
+        if (!isRealPayments()) {
+          const p1 = { from: 'analyst', to: 'scout', amount: 0.02, purpose: 'signal_purchase', timestamp: now };
+          const p2 = { from: 'executor', to: 'analyst', amount: 0.03, purpose: 'analysis_purchase', timestamp: now };
+          demoPaymentHistory.push(p1, p2);
+          eventBus.emitDashboardEvent({ type: 'x402_payment', data: p1, timestamp: now });
+          eventBus.emitDashboardEvent({ type: 'x402_payment', data: p2, timestamp: now });
+        }
 
         // Find ALL profitable pairs: every buyVenue cheaper than every sellVenue
         for (let i = 0; i < venues.length; i++) {
@@ -324,7 +346,9 @@ async function startAnalyst(): Promise<void> {
             );
 
             eventBus.emitDashboardEvent({ type: 'trade_executed', data: tradeEvent, timestamp: now });
-            eventBus.emitDashboardEvent({ type: 'x402_payment', data: { from: 'treasury', to: 'executor', amount: parseFloat((pairNetProfit * 0.10).toFixed(4)), purpose: `executor_fee (${buyV.venue}->${sellV.venue})` }, timestamp: now });
+            if (!isRealPayments()) {
+              eventBus.emitDashboardEvent({ type: 'x402_payment', data: { from: 'treasury', to: 'executor', amount: parseFloat((pairNetProfit * 0.10).toFixed(4)), purpose: `executor_fee (${buyV.venue}->${sellV.venue})` }, timestamp: now });
+            }
           }
         }
 
@@ -355,7 +379,22 @@ async function startAnalyst(): Promise<void> {
           });
 
           logInfo('executor', `[DEMO] Session total: $${dp.sessionPnL.toFixed(2)} (${dp.tradeCount} trades, ${dp.profitableCount} profitable)`);
+
+          // Real x402 payments — full 5-payment closed-loop cycle
+          if (isRealPayments()) {
+            const executorFee = Math.min(totalSessionProfit * 0.10, 0.10);
+            void executeFullPaymentCycle(agentKeys, agentAddresses, executorFee).catch(err => {
+              logError('x402', 'Real payment cycle failed (non-critical)', err);
+            });
+          }
         }
+      }
+
+      // MONITOR cycles — lightweight real payment (signal purchase only)
+      if (action === 'MONITOR' && isRealPayments()) {
+        void executeMonitorPaymentCycle(agentKeys, agentAddresses).catch(err => {
+          logError('x402', 'Monitor payment cycle failed (non-critical)', err);
+        });
       }
     } catch (err) {
       logError('analyst', 'Analysis failed', err);
@@ -442,6 +481,19 @@ async function startTreasury(): Promise<void> {
 
 export async function startAllAgents(): Promise<void> {
   logInfo('orchestrator', 'Starting 4 agents (multi-venue arbitrage mode)...');
+
+  // Log x402 payment mode
+  if (isRealPayments()) {
+    logInfo('x402', '=== REAL ON-CHAIN x402 PAYMENTS ENABLED ===');
+    try {
+      await logAllAgentBalances(agentAddresses as unknown as Record<string, string>);
+    } catch (err) {
+      logError('x402', 'Failed to check balances', err);
+    }
+  } else {
+    logInfo('x402', 'Simulated x402 payments (set X402_REAL_PAYMENTS=true for on-chain)');
+  }
+
   await startScout();
   await startExecutor();
   await startTreasury();
