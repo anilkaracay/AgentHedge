@@ -4,8 +4,8 @@ import { fileURLToPath } from 'node:url';
 import express from 'express';
 import cors from 'cors';
 import { Server } from 'socket.io';
-import { config, logInfo, logError, eventBus, scanAllVenues, getGasPrice, TRACKED_TOKENS } from '@agenthedge/shared';
-import type { DashboardEvent } from '@agenthedge/shared';
+import { config, logInfo, logError, eventBus, scanAllVenues, getGasPrice, TRACKED_TOKENS, isDemoMode, AgentHedgeTelegramBot, getDemoPortfolio } from '@agenthedge/shared';
+import type { DashboardEvent, SystemStateAccessor } from '@agenthedge/shared';
 import { runArbitrageCycle } from './pipeline.js';
 import { startAllAgents, getDemoHistory, getAttestationHistory } from './agents.js';
 
@@ -92,6 +92,67 @@ const liveState: LiveState = {
   treasury: { portfolio: 0, dailyPnl: 0, circuitBreaker: 'OK', lastUpdate: '' },
   meta: { cyclesCompleted: 0, totalTx: 13, agentsRegistered: 4 },
 };
+
+// ── Pause/Resume ──
+let pipelinePaused = false;
+const startTimestamp = Date.now();
+
+// ── Telegram Bot ──
+const telegramBot = new AgentHedgeTelegramBot({
+  botToken: process.env.TELEGRAM_BOT_TOKEN || '',
+  chatId: process.env.TELEGRAM_CHAT_ID || '',
+  enabled: process.env.TELEGRAM_ENABLED === 'true',
+  throttleMonitor: parseInt(process.env.TELEGRAM_THROTTLE_MONITOR || '10', 10),
+  spreadThreshold: parseFloat(process.env.ALERT_SPREAD_THRESHOLD || '0.4'),
+});
+
+const systemState: SystemStateAccessor = {
+  getRecentTrades: (n) => getDemoHistory().trades.slice(-n),
+  getPortfolio: () => ({
+    totalValueUSD: liveState.treasury.portfolio,
+    dailyPnL: liveState.treasury.dailyPnl,
+  }),
+  getCycleCount: () => liveState.meta.cyclesCompleted,
+  getUptime: () => Date.now() - startTimestamp,
+  getAttestationCount: () => getAttestationHistory().length,
+  isPaused: () => pipelinePaused,
+  pause: () => { pipelinePaused = true; logInfo('orchestrator', 'Pipeline PAUSED via Telegram'); },
+  resume: () => { pipelinePaused = false; logInfo('orchestrator', 'Pipeline RESUMED via Telegram'); },
+  getDemoMode: () => isDemoMode(),
+};
+telegramBot.setStateAccessor(systemState);
+
+// ── Telegram event subscriptions ──
+eventBus.on('dashboard_event', (event: DashboardEvent) => {
+  switch (event.type) {
+    case 'trade_executed':
+      telegramBot.sendTradeAlert(event.data);
+      break;
+    case 'chain_attestation':
+      telegramBot.sendAttestationAlert(event.data);
+      break;
+    case 'signal_detected': {
+      const d = event.data as any;
+      if (d.spreadPercent > parseFloat(process.env.ALERT_SPREAD_THRESHOLD || '0.4')) {
+        telegramBot.sendSpreadAlert(d);
+      }
+      break;
+    }
+    case 'analysis_complete': {
+      const d = event.data as any;
+      if (d.action === 'MONITOR') {
+        telegramBot.sendMonitorUpdate({
+          spreadPercent: d.estimatedSlippage || 0,
+          buyVenue: d.reason?.split(' ')[0] || '?',
+          sellVenue: '?',
+          buyPrice: 0,
+          sellPrice: 0,
+        });
+      }
+      break;
+    }
+  }
+});
 
 // Update state from events
 eventBus.on('dashboard_event', (event: DashboardEvent) => {
@@ -233,6 +294,17 @@ app.get('/api/attestations', (_req, res) => {
   res.json({ attestations: getAttestationHistory(), count: getAttestationHistory().length });
 });
 
+app.get('/api/pipeline-status', (_req, res) => {
+  res.json({ paused: pipelinePaused });
+});
+
+app.post('/api/pipeline-status', (req, res) => {
+  const { paused } = req.body as { paused: boolean };
+  pipelinePaused = paused;
+  logInfo('orchestrator', `Pipeline ${paused ? 'PAUSED' : 'RESUMED'} via API`);
+  res.json({ paused: pipelinePaused });
+});
+
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', component: 'orchestrator', uptime: process.uptime() });
 });
@@ -294,6 +366,10 @@ async function startPipeline(): Promise<void> {
   setTimeout(() => { void runArbitrageCycle(); }, 5000);
 
   pipelineTimer = setInterval(async () => {
+    if (pipelinePaused) {
+      logInfo('orchestrator', 'Pipeline paused, skipping cycle');
+      return;
+    }
     if (pipelineRunning) {
       logInfo('orchestrator', 'Previous cycle still running, skipping');
       return;
@@ -310,6 +386,8 @@ async function startPipeline(): Promise<void> {
 // ── Graceful Shutdown ──
 function shutdown(): void {
   logInfo('orchestrator', 'Shutting down...');
+  telegramBot.sendShutdownMessage();
+  telegramBot.stop();
   if (pipelineTimer) { clearInterval(pipelineTimer); pipelineTimer = null; }
   io.close();
   httpServer.close(() => {
@@ -331,6 +409,11 @@ httpServer.listen(config.ORCHESTRATOR_WS_PORT, async () => {
   } catch (err) {
     logError('orchestrator', 'Failed to start agents', err);
   }
+
+  // Send Telegram startup message
+  const mode = isDemoMode() ? 'DEMO ($800K simulated)' : 'LIVE';
+  const feeTier = process.env.FEE_TIER || 'professional';
+  telegramBot.sendStartupMessage(mode, feeTier);
 
   // Start pipeline loop
   startPipeline().catch((err) => {

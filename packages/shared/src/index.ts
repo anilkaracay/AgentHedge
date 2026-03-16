@@ -42,3 +42,5 @@ export { findOptimalTradeSize } from './liquidityAnalyzer.js';
 export type { LiquidityProbe, OptimalTradeSize } from './liquidityAnalyzer.js';
 export { isDemoMode, getDemoPortfolio, updateDemoBalance, maybeInjectVolatilitySpike, applyMarketMicrostructure } from './demoMode.js';
 export type { VenueBalance, DemoPortfolio } from './demoMode.js';
+export { AgentHedgeTelegramBot } from './telegramBot.js';
+export type { TelegramConfig, SystemStateAccessor } from './telegramBot.js';
