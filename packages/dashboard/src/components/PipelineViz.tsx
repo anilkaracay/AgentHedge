@@ -1,12 +1,6 @@
-import type { DashboardEvent, X402PaymentEvent } from '../hooks/useSocket';
-import { useMemo } from 'react';
+import type { DashboardEvent } from '../hooks/useSocket';
 
-const AGENTS = [
-  { id: 'scout', label: 'SCOUT', color: '#67e8f9' },
-  { id: 'analyst', label: 'ANALYST', color: '#c084fc' },
-  { id: 'executor', label: 'EXECUTOR', color: '#FACC15' },
-  { id: 'treasury', label: 'TREASURY', color: '#4ade80' },
-];
+const STEPS = ['SCOUT', 'ANALYST', 'EXECUTOR', 'TREASURY'];
 
 const STAGE_EVENTS: Record<string, string[]> = {
   SCOUT: ['signal_detected'],
@@ -20,69 +14,64 @@ interface Props {
 }
 
 export default function PipelineViz({ events }: Props) {
-  const recentEvents = events.slice(0, 10);
+  const recent = events.slice(0, 12);
 
-  const pipelineState = AGENTS.map((agent) => {
-    const hasEvent = recentEvents.some(e => STAGE_EVENTS[agent.label]?.includes(e.type));
-    return hasEvent ? 'done' : 'pending';
-  });
+  const completed = STEPS.map(step =>
+    recent.some(e => STAGE_EVENTS[step]?.includes(e.type))
+  );
 
-  // Find which stage is currently "active" (first non-done after a done, or first)
-  let activeIndex = 0;
-  for (let i = 0; i < pipelineState.length; i++) {
-    if (pipelineState[i] === 'done') activeIndex = i + 1;
+  // Active = first non-completed, or -1 if all done
+  let activeIdx = -1;
+  for (let i = 0; i < STEPS.length; i++) {
+    if (!completed[i]) { activeIdx = i; break; }
   }
-  if (activeIndex >= AGENTS.length) activeIndex = 0;
-
-  // Get x402 payment amounts per agent
-  const paymentAmounts = useMemo(() => {
-    const amounts: Record<string, number> = {};
-    for (const e of recentEvents) {
-      if (e.type === 'x402_payment') {
-        const p = e.data as X402PaymentEvent;
-        amounts[p.to] = (amounts[p.to] || 0) + p.amount;
-      }
-    }
-    return amounts;
-  }, [recentEvents]);
+  // If all completed, show all green (cycle done)
+  const allDone = completed.every(Boolean);
 
   return (
-    <div className="flex items-center justify-center gap-0 px-6 py-2">
-      {AGENTS.map((agent, i) => {
-        const isDone = pipelineState[i] === 'done';
-        const isActive = i === activeIndex;
+    <div className="flex items-center justify-center py-2.5">
+      {STEPS.map((step, i) => {
+        const done = completed[i];
+        const active = i === activeIdx && !allDone;
+        const pending = !done && !active;
 
         return (
-          <div key={agent.id} className="flex items-center">
-            {/* Arrow + payment amount */}
+          <div key={step} className="flex items-center">
+            {/* Connector before node */}
             {i > 0 && (
-              <div className="flex flex-col items-center mx-1.5 w-[48px]">
-                <span className="font-mono text-[9px] text-[#FACC15]/60 mb-0.5">
-                  {paymentAmounts[agent.id] ? `$${paymentAmounts[agent.id].toFixed(2)}` : ''}
-                </span>
-                <svg width="48" height="8" className="overflow-visible">
-                  <line x1="0" y1="4" x2="42" y2="4" stroke={isDone ? '#FACC15' : '#27272a'} strokeWidth="1" strokeDasharray="4 3" className={isDone ? 'animate-dash' : ''} />
-                  <polygon points="43,1 48,4 43,7" fill={isDone ? '#FACC15' : '#27272a'} />
-                </svg>
-              </div>
+              <div
+                className="mx-2.5"
+                style={{
+                  width: 52,
+                  height: 1,
+                  background: completed[i - 1] ? (allDone ? '#22c55e' : '#22c55e') : '#27272a',
+                  marginBottom: 18,
+                }}
+              />
             )}
 
-            {/* Agent box */}
-            <div
-              className={`relative px-3 py-1.5 border ${isActive ? 'border-[#FACC15]/40 animate-active-pulse' : isDone ? 'border-[rgba(255,255,255,0.1)]' : 'border-[rgba(255,255,255,0.04)]'}`}
-              style={{ borderRadius: 2, background: isActive ? 'rgba(250,204,21,0.04)' : '#0a0a0f' }}
-            >
-              <div className="flex items-center gap-1.5">
-                {isDone && <span className="text-[10px] text-[#22c55e]">✓</span>}
-                {isActive && <span className="w-1.5 h-1.5 rounded-full animate-pulse-dot" style={{ backgroundColor: agent.color }} />}
-                {!isDone && !isActive && <span className="w-1 h-1 rounded-full bg-[#3f3f46]" />}
-                <span
-                  className="font-mono text-[10px] uppercase tracking-wider"
-                  style={{ color: isActive ? agent.color : isDone ? '#a1a1aa' : '#52525b' }}
-                >
-                  {agent.label}
-                </span>
-              </div>
+            {/* Node */}
+            <div className="flex flex-col items-center gap-1">
+              <div
+                className={active ? 'pipeline-active' : ''}
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: '50%',
+                  background: active ? '#FACC15' : done ? '#22c55e' : '#3f3f46',
+                  boxShadow: active ? '0 0 8px rgba(250,204,21,0.4)' : 'none',
+                }}
+              />
+              <span
+                className="font-mono text-[10px] uppercase"
+                style={{
+                  letterSpacing: '0.1em',
+                  color: active ? '#FACC15' : done ? '#e4e4e7' : '#52525b',
+                  fontWeight: active ? 600 : 400,
+                }}
+              >
+                {step}
+              </span>
             </div>
           </div>
         );

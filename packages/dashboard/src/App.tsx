@@ -46,13 +46,6 @@ function App() {
             <span className="font-serif text-[16px] text-[#e4e4e7]">Hedge</span>
           </div>
 
-          {/* Connection status */}
-          <div className="flex items-center gap-1.5 ml-2">
-            <div className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-[#22c55e]' : 'bg-[#ef4444]'}`} />
-            <span className="font-mono text-[10px] text-[#52525b] uppercase">
-              {connected ? 'LIVE' : 'OFFLINE'}
-            </span>
-          </div>
         </div>
 
         {/* Center: Demo toggle + cycle */}

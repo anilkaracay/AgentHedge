@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import type { DashboardEvent } from '../hooks/useSocket';
 
+const THRESHOLD = 0.32; // professional tier profitability threshold
+
 interface Props {
   events: DashboardEvent[];
 }
@@ -44,13 +46,13 @@ export default function SpreadIndicator({ events }: Props) {
   const isExecute = latestAction === 'EXECUTE';
 
   // Sparkline bars
-  const maxSpread = Math.max(...spreadHistory.map(s => s.spread), 0.01);
-  const barH = 18;
+  const maxSpread = Math.max(...spreadHistory.map(s => s.spread), THRESHOLD * 1.2);
+  const barH = 26;
 
   return (
     <div className={`card px-3 py-2 ${isExecute ? 'animate-spread-alert' : ''}`}>
       <div className="flex items-center justify-between mb-1">
-        <span className="text-[10px] text-[#71717a] uppercase tracking-wider font-sans">Live Spread</span>
+        <span className="text-[10px] text-[#52525b] uppercase tracking-wider font-sans">Live Spread</span>
         <span className="font-mono text-[10px] text-[#52525b]">{venueCount} venues</span>
       </div>
       <div className="flex items-center gap-4">
@@ -59,7 +61,7 @@ export default function SpreadIndicator({ events }: Props) {
           <span className={`font-mono text-[20px] font-medium ${isExecute ? 'text-[#FACC15]' : 'text-[#e4e4e7]'}`}>
             {spread.toFixed(2)}%
           </span>
-          <span className="font-mono text-[11px] text-[#71717a]">
+          <span className="font-mono text-[11px] text-[#52525b]">
             {latestSignal?.token ?? 'OKB'}
           </span>
         </div>
@@ -67,21 +69,32 @@ export default function SpreadIndicator({ events }: Props) {
         {/* Venue names */}
         <div className="flex items-center gap-1.5 font-mono text-[11px]">
           <span className="text-[#67e8f9]">{buyVenue}</span>
-          <span className="text-[#52525b]">${buyPrice.toFixed(2)}</span>
-          <span className="text-[#52525b]">→</span>
+          <span className="text-[#3f3f46]">${buyPrice.toFixed(2)}</span>
+          <span className="text-[#3f3f46]">→</span>
           <span className="text-[#FACC15]">{sellVenue}</span>
-          <span className="text-[#52525b]">${sellPrice.toFixed(2)}</span>
+          <span className="text-[#3f3f46]">${sellPrice.toFixed(2)}</span>
         </div>
 
-        {/* Mini bar sparkline */}
-        <div className="flex-1 flex items-end justify-end gap-[2px]" style={{ height: barH }}>
+        {/* Bar sparkline with threshold */}
+        <div className="flex-1 flex items-end justify-end gap-[3px] relative" style={{ height: barH }}>
+          {/* Threshold line */}
+          {spreadHistory.length > 0 && (
+            <div
+              className="absolute left-0 right-0"
+              style={{
+                bottom: (THRESHOLD / maxSpread) * barH,
+                height: 1,
+                borderTop: '1px dashed rgba(250,204,21,0.2)',
+              }}
+            />
+          )}
           {spreadHistory.map((s, i) => {
             const h = Math.max(2, (s.spread / maxSpread) * barH);
             const color = s.action === 'EXECUTE' ? '#FACC15' : '#3f3f46';
             return (
               <div
                 key={i}
-                className="w-[3px] rounded-t-[1px]"
+                className="w-[4px] rounded-t-[1px] relative z-10"
                 style={{ height: h, backgroundColor: color }}
               />
             );

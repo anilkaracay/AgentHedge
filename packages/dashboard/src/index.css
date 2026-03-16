@@ -107,3 +107,12 @@ body {
   border-radius: 1px;
   transition: width 0.4s ease;
 }
+
+.pipeline-active {
+  animation: pipeline-pulse 2s ease-in-out infinite;
+}
+
+@keyframes pipeline-pulse {
+  0%, 100% { box-shadow: 0 0 4px rgba(250,204,21,0.2); transform: scale(1); }
+  50% { box-shadow: 0 0 12px rgba(250,204,21,0.5); transform: scale(1.2); }
+}

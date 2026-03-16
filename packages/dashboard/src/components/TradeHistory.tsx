@@ -87,12 +87,14 @@ export default function TradeHistory({ trades, events }: Props) {
 
                   {/* Monitor row between trades */}
                   {monitorBetween && (
-                    <div className="px-3 py-1 border-b border-[rgba(255,255,255,0.02)] flex items-center gap-2 opacity-30 font-mono text-[10px]">
+                    <div className="px-3 py-1 border-b border-[rgba(255,255,255,0.03)] flex items-center gap-2 font-mono text-[10px]" style={{ opacity: 0.4 }}>
                       <span className="text-[#52525b]">{new Date(monitorBetween.timestamp).toLocaleTimeString('en-GB', { hour12: false })}</span>
-                      <span className="text-[#3f3f46]">·····</span>
-                      <span className="text-[#3f3f46] uppercase">monitor</span>
-                      <span className="text-[#3f3f46]">spread {((monitorBetween.data as any).estimatedSlippage ?? 0).toFixed(2)}%</span>
-                      <span className="text-[#3f3f46]">·····</span>
+                      <span className="text-[#3f3f46]">· · ·</span>
+                      <span className="text-[#71717a] uppercase">monitor</span>
+                      <span className="text-[#71717a]">spread {((monitorBetween.data as any).estimatedSlippage ?? 0).toFixed(2)}%</span>
+                      <span className="text-[#52525b]">·</span>
+                      <span className="text-[#52525b]">below 0.32% threshold</span>
+                      <span className="text-[#3f3f46]">· · ·</span>
                     </div>
                   )}
                 </div>
