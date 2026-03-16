@@ -62,6 +62,7 @@ async function maybeAttestCycle(
   estimatedProfitCents: number
 ) {
   if (!signal) return;
+  if (process.env.ATTEST_ENABLED !== 'true') return;
 
   // Throttle: always attest EXECUTE, every Nth MONITOR, skip SKIP
   if (decision === 'SKIP') return;
