@@ -19,9 +19,11 @@ a:hover{color:var(--text)}
 /* NAV */
 nav{position:sticky;top:0;z-index:100;background:rgba(9,9,11,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 2rem;height:56px;display:flex;align-items:center;justify-content:space-between}
 .nav-mark{font-family:var(--mono);font-weight:500;font-size:.95rem;color:var(--text);letter-spacing:-.02em}
-.nav-links{display:flex;gap:1.75rem;font-size:.875rem;font-family:var(--mono);font-weight:400}
+.nav-links{display:flex;gap:1.75rem;font-size:.875rem;font-family:var(--mono);font-weight:400;align-items:center}
 .nav-links a{color:var(--text-muted);transition:color .2s}
 .nav-links a:hover{color:var(--text)}
+.btn-launch{font-family:var(--mono);font-size:.75rem;font-weight:500;padding:.45rem 1.1rem;border:1px solid var(--accent);color:var(--accent);background:transparent;border-radius:3px;transition:all .2s;cursor:pointer;text-decoration:none;letter-spacing:.02em}
+.btn-launch:hover{background:var(--accent);color:var(--bg)}
 
 /* LAYOUT */
 .container{max-width:1080px;margin:0 auto;padding:0 2rem}
@@ -151,7 +153,8 @@ footer .footer-links a:hover{color:var(--text)}
     <a href="#architecture">Architecture</a>
     <a href="#agents">Agents</a>
     <a href="https://github.com/anilkaracay/AgentHedge" target="_blank">GitHub</a>
-    <a href="https://www.okx.com/web3/explorer/xlayer/address/0x6d62f601B8A0f57b712cc5dB60D270cBcb7aE0e6" target="_blank">Explorer</a>
+    <a href="https://www.okx.com/web3/explorer/xlayer/address/0xB8406ad5A79721d8D411837b68dfc5E4FF1A41e4" target="_blank">Explorer</a>
+    <a href="http://localhost:4006" class="btn-launch">Launch App →</a>
   </div>
 </nav>
 
