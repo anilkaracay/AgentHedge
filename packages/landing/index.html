@@ -129,27 +129,53 @@ footer .footer-links a:hover{color:var(--text)}
 .fade-in.visible{opacity:1;transform:translateY(0)}
 
 /* RESPONSIVE */
+@media(max-width:1024px){
+  .x402-grid{grid-template-columns:1fr}
+  .agent-grid{grid-template-columns:1fr 1fr}
+}
 @media(max-width:768px){
   .agent-grid{grid-template-columns:1fr 1fr}
   .metrics{grid-template-columns:1fr 1fr}
   .pipeline{flex-direction:column;align-items:stretch}
-  .pipe-arrow{width:100%;min-width:0;height:40px;flex-direction:row;padding:0}
+  .pipe-arrow{width:100%;min-width:0;height:36px;flex-direction:row;padding:0;justify-content:center}
   .pipe-arrow-line{width:1px;height:100%}
-  .pipe-node{border-radius:0}
-  .pipe-node:first-child{border-radius:4px 4px 0 0}
-  .pipe-node:last-child{border-radius:0 0 4px 4px}
-  .x402-grid{grid-template-columns:1fr}
+  .pipe-arrow-line::after{display:none}
+  .pipe-arrow-amt{margin-top:0;margin-left:.5rem}
+  .pipe-node{border-radius:0!important;min-width:0}
+  .pipe-node:first-child{border-radius:4px 4px 0 0!important}
+  .pipe-node:last-child{border-radius:0 0 4px 4px!important}
   section{padding:4rem 0}
   .hero{padding:4rem 0 3rem}
+  .hero h1{font-size:2rem}
+  .section-heading{font-size:1.6rem}
   .nav-links{gap:1rem;font-size:.75rem}
+  .terminal{font-size:.7rem;padding:1rem}
+  .terminal-badge{font-size:.6rem}
+  div[style*="grid-template-columns:1fr 1fr;gap:1px"]{grid-template-columns:1fr!important}
+  .tx-table{font-size:.7rem}
+  .tx-table td{font-size:.68rem}
+  .contract-addr{font-size:.7rem}
 }
 @media(max-width:480px){
   .agent-grid{grid-template-columns:1fr}
   .metrics{grid-template-columns:1fr 1fr}
-  nav{padding:0 1rem}
+  nav{padding:0 .75rem;height:48px}
+  .nav-mark{font-size:.85rem}
   .container{padding:0 1rem}
+  .nav-links{gap:.75rem;font-size:.7rem}
   .nav-links a:not(.btn-launch){display:none}
-  .hero h1{font-size:1.8rem}
+  .hero h1{font-size:1.6rem}
+  .hero-sub{font-size:.9rem}
+  .metric-val{font-size:1.4rem}
+  .metric-label{font-size:.65rem}
+  .btn{font-size:.72rem;padding:.55rem 1rem}
+  .btn-launch{font-size:.68rem;padding:.35rem .8rem}
+  .pipe-name{font-size:.78rem}
+  .pipe-role{font-size:.72rem}
+  .agent-name{font-size:.78rem}
+  .agent-role{font-size:.75rem}
+  .agent-meta{font-size:.65rem}
+  .x402-text{font-size:.85rem}
 }
 </style>
 </head>

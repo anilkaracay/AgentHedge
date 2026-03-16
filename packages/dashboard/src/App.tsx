@@ -29,27 +29,23 @@ function App() {
     <div className="h-screen flex flex-col bg-[#09090b] text-[#e4e4e7] overflow-hidden">
       {/* Demo Banner */}
       {demoMode && (
-        <div className="h-6 flex-shrink-0 bg-[#FACC15]/5 border-b border-[#FACC15]/10 flex items-center justify-center">
-          <span className="font-mono text-[10px] text-[#FACC15]/70 uppercase tracking-wider">
-            Demo Mode — Simulated portfolio, live prices with market microstructure simulation
+        <div className="h-6 flex-shrink-0 bg-[#FACC15]/5 border-b border-[#FACC15]/10 flex items-center justify-center px-2">
+          <span className="demo-banner-text font-mono text-[10px] text-[#FACC15]/70 uppercase tracking-wider text-center">
+            Demo Mode — Simulated portfolio, live prices
           </span>
         </div>
       )}
 
       {/* Top Bar */}
-      <header className="h-11 flex-shrink-0 border-b border-[rgba(255,255,255,0.06)] flex items-center justify-between px-4 bg-[#09090b]">
+      <header className="h-11 flex-shrink-0 border-b border-[rgba(255,255,255,0.06)] flex items-center justify-between px-3 sm:px-4 bg-[#09090b]">
         <div className="flex items-center gap-3">
-          {/* Logo */}
-          <div className="flex items-baseline">
+          <div className="flex items-baseline header-logo">
             <span className="font-serif text-[16px] text-[#FACC15]">a</span>
             <span className="font-serif text-[16px] text-[#e4e4e7]">Hedge</span>
           </div>
-
         </div>
 
-        {/* Center: Demo toggle + cycle */}
-        <div className="flex items-center gap-4">
-          {/* Demo Toggle */}
+        <div className="header-center flex items-center gap-4">
           <button
             onClick={toggleDemoMode}
             className="flex items-center gap-1.5 px-2.5 py-1 border border-[rgba(255,255,255,0.06)] hover:border-[#FACC15]/30 transition-colors rounded-[2px]"
@@ -60,47 +56,42 @@ function App() {
             </div>
           </button>
 
-          {/* Cycle indicator */}
           <div className="flex items-center gap-2">
             <span className="font-mono text-[10px] text-[#52525b]">CYCLE</span>
             <span className="font-mono text-[12px] text-[#FACC15]">#{cycleCount}</span>
           </div>
         </div>
 
-        {/* Right: uptime */}
         <div className="flex items-center gap-2">
-          <span className="font-mono text-[10px] text-[#3f3f46]">⏱</span>
+          <span className="font-mono text-[10px] text-[#3f3f46] hidden sm:inline">⏱</span>
           <span className="font-mono text-[12px] text-[#71717a]">{fmt(uptime)}</span>
         </div>
       </header>
 
       {/* Pipeline Visualization */}
-      <div className="flex-shrink-0 border-b border-[rgba(255,255,255,0.06)] bg-[#0a0a0f]">
+      <div className="pipeline-bar flex-shrink-0 border-b border-[rgba(255,255,255,0.06)] bg-[#0a0a0f]">
         <PipelineViz events={events} />
       </div>
 
-      {/* Main 3-Column Layout */}
-      <div className="flex-1 grid overflow-hidden" style={{ gridTemplateColumns: '240px 1fr 300px' }}>
+      {/* Main 3-Column Layout (responsive via CSS) */}
+      <div className="main-grid">
         {/* Left: Agent Cards */}
-        <div className="border-r border-[rgba(255,255,255,0.06)] overflow-y-auto p-2">
+        <div className="sidebar-left border-r border-[rgba(255,255,255,0.06)] overflow-y-auto p-2">
           <AgentNetwork events={events} />
         </div>
 
-        {/* Center: Spread + Trades + Payments */}
-        <div className="flex flex-col min-w-0 overflow-hidden">
-          {/* Trade History */}
+        {/* Center: Trades + Payments */}
+        <div className="center-col flex flex-col min-w-0 overflow-hidden">
           <div className="flex-1 min-h-0 p-2">
             <TradeHistory trades={trades} events={events} />
           </div>
-
-          {/* Payment Stream */}
           <div className="h-[180px] flex-shrink-0 p-2 pt-0">
             <PaymentStream payments={payments} />
           </div>
         </div>
 
         {/* Right: Portfolio + Risk + Attestations */}
-        <div className="border-l border-[rgba(255,255,255,0.06)] overflow-y-auto p-2">
+        <div className="sidebar-right border-l border-[rgba(255,255,255,0.06)] overflow-y-auto p-2">
           <RiskDashboard portfolio={portfolio} pnlHistory={pnlHistory} />
           <div className="mt-1.5">
             <ChainAttestations attestations={attestations} />
