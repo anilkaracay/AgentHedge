@@ -13,7 +13,7 @@ Autonomous multi-agent CeDeFi arbitrage system with x402 inter-agent micropaymen
 
 ## Overview
 
-AgentHedge is a four-agent arbitrage pipeline deployed on X Layer (Chain ID 196). Each agent has a single responsibility -- Scout detects cross-chain price discrepancies, Analyst validates profitability, Executor settles trades on-chain, and Treasury manages risk and capital allocation. Agents communicate exclusively through x402 micropayments: every inter-agent service call is an HTTP 402 payment negotiation settled in USDC on X Layer.
+AgentHedge is a four-agent arbitrage pipeline deployed on X Layer (Chain ID 196). Each agent has a single responsibility -- Scout detects CeDeFi price discrepancies across DEX and CEX venues, Analyst validates profitability, Executor settles trades, and Treasury manages risk and capital allocation. Agents communicate exclusively through x402 micropayments: every inter-agent service call is an HTTP 402 payment negotiation settled in USDC on X Layer.
 
 Current arbitrage infrastructure is typically monolithic -- a single process handles price discovery, analysis, execution, and risk in one opaque loop. AgentHedge decomposes this into four independently replaceable, economically incentivized services. Any agent can be swapped without affecting the rest of the pipeline. Scout can be replaced with a better price oracle. Analyst can adopt a new model. The x402 payment protocol ensures that each agent is compensated for the value it provides, creating a self-sustaining service marketplace.
 
