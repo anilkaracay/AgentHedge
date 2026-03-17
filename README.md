@@ -9,7 +9,7 @@ Autonomous multi-agent CeDeFi arbitrage system with x402 inter-agent micropaymen
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.4-3178c6?style=flat-square)
 ![License](https://img.shields.io/badge/License-MIT-757575?style=flat-square)
 
-**[Contract Explorer](https://www.okx.com/web3/explorer/xlayer/address/0xB8406ad5A79721d8D411837b68dfc5E4FF1A41e4)** · **[Demo Video](https://youtu.be/OrgI-qv6trQ)**
+**[Website](https://ahedge.xyz)** · **[Contract Explorer](https://www.okx.com/web3/explorer/xlayer/address/0xB8406ad5A79721d8D411837b68dfc5E4FF1A41e4)** · **[Demo Video](https://youtu.be/yyka7bdXOw0)**
 
 ---
 
@@ -622,9 +622,10 @@ Built by Cayvox Labs for the X Layer Onchain OS AI Hackathon.
 
 ## Links
 
+- **Website:** [ahedge.xyz](https://ahedge.xyz)
 - **GitHub:** [github.com/anilkaracay/AgentHedge](https://github.com/anilkaracay/AgentHedge)
 - **Contract:** [X Layer Explorer](https://www.okx.com/web3/explorer/xlayer/address/0xB8406ad5A79721d8D411837b68dfc5E4FF1A41e4)
-- **Demo Video:** [YouTube](https://youtu.be/OrgI-qv6trQ)
+- **Demo Video:** [YouTube](https://youtu.be/yyka7bdXOw0)
 
 ---
 
