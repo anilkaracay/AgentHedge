@@ -293,18 +293,12 @@ Every inter-agent payment is a real ERC-20 USDC transfer on X Layer mainnet form
 - **Profit redistribution**: SCOUT → TREASURY (0.02 USDC return), EXECUTOR → TREASURY (0.07 USDC return)
 - **Net cost per cycle: ~0.01 USDC** — the system is economically self-sustaining
 
-| # | Payment | Amount | Tx Hash | Explorer |
-|---|---------|--------|---------|----------|
-| 19 | ANALYST → SCOUT (signal_purchase) | 0.02 USDC | `0x0b9dfbc3...` | [View](https://www.okx.com/web3/explorer/xlayer/tx/0x0b9dfbc3) |
-| 20 | SCOUT → TREASURY (profit_return) | 0.02 USDC | `0xea0f8af3...` | [View](https://www.okx.com/web3/explorer/xlayer/tx/0xea0f8af3) |
-| 21 | ANALYST → SCOUT (signal_purchase) | 0.02 USDC | `0x76e6d05c...` | [View](https://www.okx.com/web3/explorer/xlayer/tx/0x76e6d05c) |
-| 22 | SCOUT → TREASURY (profit_return) | 0.02 USDC | `0x6e6680ff...` | [View](https://www.okx.com/web3/explorer/xlayer/tx/0x6e6680ff) |
-| 23 | ANALYST → SCOUT (signal_purchase) | 0.02 USDC | `0xc7643afc...` | [View](https://www.okx.com/web3/explorer/xlayer/tx/0xc7643afc) |
-| 24 | SCOUT → TREASURY (profit_return) | 0.02 USDC | `0xc4c79151...` | [View](https://www.okx.com/web3/explorer/xlayer/tx/0xc4c79151) |
-| 25 | ANALYST → SCOUT (signal_purchase) | 0.02 USDC | `0x0b770e3b...` | [View](https://www.okx.com/web3/explorer/xlayer/tx/0x0b770e3b) |
-| 26 | SCOUT → TREASURY (profit_return) | 0.02 USDC | `0xc3c5eb64...` | [View](https://www.okx.com/web3/explorer/xlayer/tx/0xc3c5eb64) |
-| 27 | ANALYST → SCOUT (signal_purchase) | 0.02 USDC | `0x2d18846e...` | [View](https://www.okx.com/web3/explorer/xlayer/tx/0x2d18846e) |
-| 28 | SCOUT → TREASURY (profit_return) | 0.02 USDC | `0xd826cfe4...` | [View](https://www.okx.com/web3/explorer/xlayer/tx/0xd826cfe4) |
+10 verified USDC transfers across 5 cycles. All transfers visible on the agent wallet explorer pages:
+
+| Payment | Amount | Verify |
+|---------|--------|--------|
+| ANALYST → SCOUT (signal_purchase) × 5 cycles | 0.02 USDC each | [Analyst Wallet](https://www.okx.com/web3/explorer/xlayer/address/0x103b2E12CDB4AaE9700b67f77c72394E26402d09) |
+| SCOUT → TREASURY (profit_return) × 5 cycles | 0.02 USDC each | [Scout Wallet](https://www.okx.com/web3/explorer/xlayer/address/0xddEecB2b67564541D5E765c4351C579F5F73a41e) |
 
 #### On-Chain Cycle Attestations
 
