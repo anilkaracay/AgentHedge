@@ -53,9 +53,9 @@ The system is fully autonomous (zero human intervention per arbitrage cycle), x4
 │  Discovery   │                      │  Analysis     │                     │  Execution   │                  │  Risk Mgmt   │
 └──────┬───────┘                      └──────┬───────┘                      └──────┬───────┘                  └──────┬───────┘
        │                                     │                                     │                                │
-       │ aggregator/quote                    │ aggregator/quote                    │ aggregator/quote               │ provider.getBalance()
-       │ (X Layer + Ethereum)                │ (price validation)                  │ aggregator/approve             │ ERC20.balanceOf()
-       │                                     │                                     │ aggregator/swap                │ aggregator/quote
+       │ Market API + CEX APIs               │ aggregator/quote                    │ aggregator/quote               │ Balance API
+       │ (X Layer DEX + OKX/MEXC/Gate)      │ (price validation)                  │ aggregator/approve             │ Portfolio API
+       │                                     │                                     │ aggregator/swap                │
        └─────────────────────────────────────┴─────────────────────────────────────┴────────────────────────────────┘
                                                     OnchainOS API v6
                                               https://web3.okx.com/api/v6/
@@ -63,7 +63,7 @@ The system is fully autonomous (zero human intervention per arbitrage cycle), x4
 
 ### Data Flow Per Cycle
 
-1. Scout compares X Layer DEX prices (via OnchainOS `aggregator/quote`) with CEX spot prices (OKX/Binance public APIs) for the same token. If the spread exceeds 0.3%, an `ArbitrageOpportunity` is stored at the Scout's x402 endpoint.
+1. Scout scans 4+ venues simultaneously: X Layer DEX (via OnchainOS `aggregator/quote` and `index/current-price`) and CEX spot prices (OKX, Gate.io, MEXC public APIs via `Promise.allSettled`). If the spread between cheapest and most expensive venue exceeds the threshold, an `ArbitrageOpportunity` is stored at the Scout's x402 endpoint.
 2. Analyst purchases the signal (pays 0.02 USDC via x402), validates freshness (<30s), re-quotes for current price, and calculates net profit after slippage, price impact, gas, and agent fees. Produces an `ExecutionRecommendation`.
 3. Executor purchases the recommendation (pays 0.03 USDC via x402), requests risk approval from Treasury, then executes the full `quote -> approve -> swap` pipeline via OnchainOS Trade API.
 4. Treasury receives the trade result, distributes profit (10% to Executor, 5% management fee, 85% to capital pool), monitors portfolio via direct chain queries, and enforces circuit breaker logic.
@@ -86,21 +86,23 @@ The system is fully autonomous (zero human intervention per arbitrage cycle), x4
 
 | Agent | Role | OnchainOS Endpoints | x402 Price | Port | Source |
 |-------|------|-------------------|-----------|------|--------|
-| Scout | Opportunity detection | `aggregator/quote` x2 chains | 0.02 USDC (sells signals) | 3001 | `packages/agents/scout/` |
-| Analyst | Profitability validation | `aggregator/quote` | 0.03 USDC (sells recommendations) | 3002 | `packages/agents/analyst/` |
-| Executor | Trade execution | `aggregator/quote`, `/approve`, `/swap` | -- (internal) | 3003 | `packages/agents/executor/` |
-| Treasury | Capital and risk management | -- (uses ethers.js RPC) | -- (distributes profit) | 3004 | `packages/agents/treasury/` |
+| Scout | Opportunity detection | Market API + `aggregator/quote` + CEX APIs | 0.02 USDC (sells signals) | Configurable | `packages/orchestrator/src/agents.ts` |
+| Analyst | Profitability validation | `aggregator/quote` (price validation) | 0.03 USDC (sells recommendations) | Configurable | `packages/orchestrator/src/agents.ts` |
+| Executor | Trade execution | `aggregator/quote`, `/approve`, `/swap` | -- (earns 10% profit) | Configurable | `packages/orchestrator/src/agents.ts` |
+| Treasury | Capital and risk management | Balance API, Portfolio API | -- (funds operations) | Configurable | `packages/orchestrator/src/agents.ts` |
 
 All agents extend `AgentBase` (`packages/shared/src/AgentBase.ts`), which provides wallet initialization, on-chain registration, agent discovery via the registry, x402 client/server capabilities, and OnchainOS API access.
 
 ### Scout -- Opportunity Detection
 
-Scout's role is price discovery across chains. Every 5 seconds, it calls `GET /api/v6/dex/aggregator/quote` on two chains simultaneously:
+Scout's role is multi-venue price discovery. Every cycle, it scans 4+ venues simultaneously via `Promise.allSettled`:
 
-- **X Layer (chainIndex=196)**: Quotes 0.001 native token (OKB) to USDC (`0x74b7f16337b8972027f6196a17a631ac6de26d22`)
-- **Ethereum (chainIndex=1)**: Quotes 0.001 native token (ETH) to USDC (`0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48`)
+- **X Layer DEX**: OnchainOS `index/current-price` (POST) and `aggregator/quote` for real DEX pricing
+- **OKX**: `/api/v5/market/ticker?instId=OKB-USDT` public API
+- **Gate.io**: `/api/v4/spot/tickers?currency_pair=OKB_USDT` public API
+- **MEXC**: `/api/v3/ticker/price?symbol=OKBUSDT` public API
 
-The price is derived from the quote response: `toTokenAmount / fromTokenAmount` adjusted for decimals. If the spread between the two chains exceeds `SPREAD_THRESHOLD` (default 0.3%), Scout creates an `OpportunitySignal` containing both prices, spread percentage, trade direction, and a confidence score. The signal expires after 30 seconds.
+All venues are queried in parallel with a 3-second timeout. The spread is calculated between the cheapest and most expensive responding venue. If the spread exceeds the profitability threshold (accounting for fees), Scout creates an `ArbitrageOpportunity` containing all venue prices, spread percentage, and a confidence score. The signal expires after 30 seconds.
 
 Scout exposes `GET /api/opportunity-signal` behind x402 middleware. Any agent requesting this endpoint must include a signed USDC payment of 0.02 USDC in the `X-Payment` header. Without payment, Scout returns HTTP 402 with payment requirements.
 
@@ -133,7 +135,7 @@ Executor purchases the Analyst's recommendation via x402 (paying 0.03 USDC), the
 
 ### Treasury -- Capital and Risk Management
 
-Treasury monitors the collective portfolio and enforces risk constraints. Unlike other agents, Treasury reads balances directly from the X Layer RPC using ethers.js -- `provider.getBalance()` for native OKB and `ERC20.balanceOf()` for USDC -- rather than through an API. Token prices for USD valuation are obtained via `aggregator/quote`.
+Treasury monitors the collective portfolio and enforces risk constraints. It uses the OnchainOS Balance API (`total-value-by-address`, `all-token-balances-by-address`) and Portfolio API (`portfolio/overview`) for real-time portfolio tracking and PnL analytics.
 
 Risk controls:
 - **Daily loss limit**: If cumulative daily P&L drops below -5% of starting portfolio value, the circuit breaker activates and all `POST /api/risk-check` requests return `{ approved: false }`
@@ -148,15 +150,22 @@ Profit distribution follows a fixed split: 10% to Executor (execution fee), 5% t
 
 ### Payment Flow Per Cycle
 
+**Service Payments (Phase 1):**
+
 | Step | From | To | Amount | Purpose |
 |------|------|----|--------|---------|
 | 1 | Analyst | Scout | 0.02 USDC | Purchase `OpportunitySignal` |
 | 2 | Executor | Analyst | 0.03 USDC | Purchase `ExecutionRecommendation` |
-| 3 | Executor | X Layer DEX | Variable | On-chain swap (not x402) |
-| 4 | Treasury | Executor | 10% of profit | Execution fee |
-| 5 | Treasury | Treasury | 5% of profit | Management fee |
+| 3 | Treasury | Executor | up to 0.10 USDC | Execution fee |
 
-Total fixed cost per cycle: 0.05 USDC in x402 inter-agent payments. A cycle is only profitable if the arbitrage spread exceeds this cost plus slippage and gas.
+**Profit Redistribution (Phase 2):**
+
+| Step | From | To | Amount | Purpose |
+|------|------|----|--------|---------|
+| 4 | Scout | Treasury | 0.02 USDC | Profit return |
+| 5 | Executor | Treasury | 0.07 USDC | Profit return |
+
+Net cost per cycle: ~0.01 USDC. The closed-loop design makes the system economically self-sustaining.
 
 ### Protocol Mechanics
 
@@ -276,9 +285,13 @@ All transactions verified on X Layer mainnet:
 | 17 | Register Executor (v2) | `0x607d6e13...` | [View](https://www.okx.com/web3/explorer/xlayer/tx/0x607d6e133771fb130303cbfe11364718577e6b21411297ee562fd12e0d1a881c) |
 | 18 | Register Treasury (v2) | `0xae95379b...` | [View](https://www.okx.com/web3/explorer/xlayer/tx/0xae95379b20a2e72cecc22a0e939a753375a0630e1db6612d64ae1863b9090872) |
 
-#### Real x402 USDC Payments (closed-loop agent economy)
+#### Real x402 USDC Payments (Closed-Loop Agent Economy)
 
-Every inter-agent payment is a real ERC-20 USDC transfer on X Layer mainnet. Payments form a closed loop: Treasury funds operations, agents earn for services, profits return to Treasury. Net cost per cycle: ~0.01 USDC.
+Every inter-agent payment is a real ERC-20 USDC transfer on X Layer mainnet forming a closed economic loop:
+
+- **Service payments**: ANALYST → SCOUT (0.02 USDC signal purchase), EXECUTOR → ANALYST (0.03 USDC analysis purchase), TREASURY → EXECUTOR (up to 0.10 USDC executor fee)
+- **Profit redistribution**: SCOUT → TREASURY (0.02 USDC return), EXECUTOR → TREASURY (0.07 USDC return)
+- **Net cost per cycle: ~0.01 USDC** — the system is economically self-sustaining
 
 | # | Payment | Amount | Tx Hash | Explorer |
 |---|---------|--------|---------|----------|
@@ -310,24 +323,46 @@ Every arbitrage cycle is attested on-chain via `AgentRegistry.attestCycle()`. Ea
 
 ## Dashboard
 
-Real-time monitoring interface built with React 18, TailwindCSS, and Recharts. Connects to the orchestrator via Socket.io WebSocket on port 3005.
+Real-time monitoring interface. Dark theme, JetBrains Mono for data, Instrument Serif for headers, Inter for body text.
 
-| Component | Description | Data Source |
-|-----------|-------------|-------------|
-| Agent Network | SVG pipeline visualization with 4 nodes; edges animate on x402 payment events | `agent_registered`, `x402_payment` events |
-| Payment Stream | Scrolling feed of x402 micropayments with agent names, amounts, and purposes | `x402_payment` events |
-| Trade History | Table of executed trades with profit/loss, status, and X Layer explorer links | `trade_executed` events |
-| Risk Dashboard | Portfolio value, daily P&L chart (Recharts), circuit breaker status indicator | `portfolio_update`, `risk_alert` events |
-| Connection Status | WebSocket connection indicator in header | Socket.io connection state |
+| Component | Description |
+|-----------|-------------|
+| Pipeline Visualization | Animated progress dots — active agent pulses yellow, completed green, pending gray |
+| Trade History | Expandable rows — click to see full breakdown: buy/sell cards, fee analysis, all venue prices as bar chart |
+| Agent Status Cards | Dynamic status per agent (SCANNING / ANALYZING / EXECUTING / DISTRIBUTING) with colored left borders |
+| x402 Payment Stream | Real-time feed with ON-CHAIN badges and explorer links for verified payments |
+| Portfolio Panel | Total value, session P&L with sparkline chart, token allocation bars |
+| Risk Panel | Circuit breaker status, daily loss progress bar with 5% limit |
+| On-Chain Attestations | List of cycle attestations with tx hashes and X Layer explorer links |
+| Demo Mode Toggle | Switch between simulated $800K portfolio (real prices) and live wallet balances |
 
-Theme: dark (`bg-gray-950`), agent-color-coded nodes (Scout: emerald, Analyst: blue, Executor: orange, Treasury: purple). All transaction hashes link to the X Layer explorer.
+Features: WebSocket real-time updates, F5 persistence (full history replayed on reconnect), responsive layout (desktop/tablet/mobile).
 
-Start the dashboard:
+## Demo Mode
 
-```bash
-npm run dev:dashboard
-# Opens at http://localhost:3000
-```
+AgentHedge includes a production-realistic demo mode (`DEMO_MODE=true`) that simulates an $800K portfolio distributed across venues while using 100% real market data.
+
+**What's real in demo mode:**
+- All prices from OnchainOS and CEX APIs (live market data, verified against exchanges)
+- Liquidity analysis (real DEX quotes + real CEX order books)
+- Cost calculations (real exchange fees, gas estimates)
+- x402 payments (real USDC transfers when `X402_REAL_PAYMENTS=true`)
+- On-chain attestations (real transactions recording cycle data)
+
+**What's simulated:**
+- Portfolio balances ($100K per venue)
+- Trade execution (order placement is simulated, not real swaps)
+- Market microstructure (venue latency profiles create natural spread variation)
+
+## Telegram Bot
+
+Real-time alerts and remote control via Telegram (`TELEGRAM_ENABLED=true`).
+
+**Alerts:** Trade executed (venue pair, size, P&L), spread threshold crossed, on-chain attestation confirmed, system start/stop.
+
+**Commands:** `/status` — agent statuses and portfolio | `/trades` — last 5 trades | `/pnl` — session summary | `/pause` / `/resume` — remote pipeline control | `/help` — command reference.
+
+Setup: Create a bot via @BotFather, configure `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` in `.env`. See `docs/TELEGRAM_SETUP.md`.
 
 ---
 
@@ -388,13 +423,13 @@ npm run dev:all
 # Or individually
 npm run dev:agents        # Scout, Analyst, Executor, Treasury
 npm run dev:orchestrator  # Pipeline coordinator + WebSocket
-npm run dev:dashboard     # React dashboard at http://localhost:3000
+npm run dev:dashboard     # React dashboard (port configured in .env)
 ```
 
 ### Run Tests
 
 ```bash
-npm test                              # 24 smart contract tests
+npm test                              # 33 smart contract tests
 npx tsx scripts/testnetDryRun.ts      # 17-point system dry run
 npx tsx scripts/testRefactored.ts     # 12-point live API test
 ```
@@ -439,7 +474,7 @@ agenthedge/
 │   ├── testRefactored.ts             # Live API integration test (12 checks)
 │   ├── testnetLive.ts                 # Testnet on-chain test
 │   ├── testOKXApi.ts                  # OnchainOS API connectivity test
-│   └── mainnet-tx-hashes.json         # All 13 mainnet transaction hashes
+│   └── mainnet-tx-hashes.json         # Mainnet transaction hashes
 ├── docs/                               # Architecture and API documentation
 ├── .env.example                        # Environment template
 ├── tsconfig.base.json                  # Shared TypeScript configuration
@@ -473,10 +508,10 @@ agenthedge/
 
 | Criterion | Evidence |
 |-----------|----------|
-| OnchainOS Integration | 3 DEX Aggregator API endpoints used across all 4 agents; HMAC-SHA256 auth; price oracle derived from `aggregator/quote` |
-| x402 Payments | 4+ x402 micropayments per arbitrage cycle; HTTP 402 negotiation with signed USDC payments; x402 is the sole inter-agent communication mechanism |
-| On-Chain Activity | 13 verified mainnet transactions; AgentRegistry contract with 4 registered agents; `recordSuccess()` called per cycle |
-| Technical Depth | 4-agent pipeline architecture; 24 smart contract tests; 29 integration test checks; real-time WebSocket dashboard; circuit breaker risk management |
+| OnchainOS Integration | 5 modules (Swap, Market, Balance, Gateway, Portfolio), 10+ endpoints across all 4 agents; HMAC-SHA256 auth |
+| x402 Payments | Real USDC ERC-20 transfers on X Layer mainnet — closed-loop economy with profit redistribution. 10+ verified payment transactions |
+| On-Chain Activity | 34+ mainnet transactions: contract deployment, agent registration, real x402 USDC payments, cycle attestations. All verifiable on X Layer explorer |
+| Technical Depth | 4-agent pipeline; 33 smart contract tests; dual-sided liquidity analysis; multi-tier fee modeling; real-time dashboard; Telegram bot; responsive design |
 
 ### Special Prize Qualification
 
@@ -484,7 +519,7 @@ agenthedge/
 |-------|--------------|
 | Most Innovative | Decomposed arbitrage into a 4-agent service marketplace where each stage is independently replaceable and economically incentivized via x402 |
 | Best in Agentic Payments | x402 is not an add-on -- it is the core coordination mechanism; agents cannot communicate without paying; payment model creates a self-sustaining agent economy |
-| Highest Real-World Adoption | Production-ready pipeline with configurable thresholds, circuit breaker, profit distribution; tested with live mainnet prices ($97 OKB, $2,117 ETH) |
+| Highest Real-World Adoption | Production-ready pipeline with configurable thresholds, circuit breaker, profit distribution; tested with live mainnet prices verified against exchanges |
 | X Layer Ecosystem Integration | Native on X Layer mainnet (Chain ID 196); uses OnchainOS DEX Aggregator for all trade routing; contract deployed and verified on X Layer |
 | Community Favorite | Open-source MIT license; comprehensive documentation; real-time dashboard with animated payment visualization |
 
@@ -579,11 +614,13 @@ The flywheel effect: more agents registered on the registry increases signal qua
 
 ## Team
 
-| Member | Role | Background |
-|--------|------|------------|
-| Anil Karacay | Lead Developer | Full-stack engineer, blockchain development, smart contract architecture |
-| Sude | Product & Research | DeFi research, protocol design, hackathon strategy |
-| Yusuf | Infrastructure | DevOps, deployment automation, testing infrastructure |
+Built by Cayvox Labs for the X Layer Onchain OS AI Hackathon.
+
+| Member | Role |
+|--------|------|
+| Anıl Karaçay | Founder & Lead Developer — Architecture, smart contracts, agent pipeline, OnchainOS integration |
+| Sude Ceren Şahin | Lead Engineer — Agent implementation, testing, protocol research |
+| Yusuf Şimşek | Growth — Community, social media, partnerships, hackathon submissions |
 
 ---
 
