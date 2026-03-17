@@ -9,6 +9,8 @@ Autonomous multi-agent CeDeFi arbitrage system with x402 inter-agent micropaymen
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.4-3178c6?style=flat-square)
 ![License](https://img.shields.io/badge/License-MIT-757575?style=flat-square)
 
+**[Contract Explorer](https://www.okx.com/web3/explorer/xlayer/address/0xB8406ad5A79721d8D411837b68dfc5E4FF1A41e4)** · **[Demo Video](https://youtu.be/OrgI-qv6trQ)**
+
 ---
 
 ## Overview
@@ -250,15 +252,15 @@ Explorer: https://www.okx.com/explorer/xlayer/address/0xB8406ad5A79721d8D411837b
 
 ### Addresses
 
-| Component | Address |
-|-----------|---------|
-| AgentRegistry (v2 + Attestations) | [`0xB8406ad5A79721d8D411837b68dfc5E4FF1A41e4`](https://www.okx.com/web3/explorer/xlayer/address/0xB8406ad5A79721d8D411837b68dfc5E4FF1A41e4) |
-| USDC (X Layer) | [`0x74b7f16337b8972027f6196a17a631ac6de26d22`](https://www.okx.com/web3/explorer/xlayer/address/0x74b7f16337b8972027f6196a17a631ac6de26d22) |
-| Scout Wallet | `0xddEecB2b67564541D5E765c4351C579F5F73a41e` |
-| Analyst Wallet | `0x103b2E12CDB4AaE9700b67f77c72394E26402d09` |
-| Executor Wallet | `0xd934004742213b3263A9A66c6d9390215B7f95e6` |
-| Treasury Wallet | `0x89583a5f27585309639d7Ed4ce30814d581F68Ed` |
-| Deployer Wallet | `0x4aF5d30b53B20d68A90D3FCb5780D9d661493326` |
+| Component | Address | Explorer |
+|-----------|---------|----------|
+| AgentRegistry (v2 + Attestations) | `0xB8406ad5A79721d8D411837b68dfc5E4FF1A41e4` | [Contract](https://www.okx.com/web3/explorer/xlayer/address/0xB8406ad5A79721d8D411837b68dfc5E4FF1A41e4) |
+| Scout Wallet | `0xddEecB2b67564541D5E765c4351C579F5F73a41e` | [Transactions](https://www.okx.com/web3/explorer/xlayer/address/0xddEecB2b67564541D5E765c4351C579F5F73a41e) |
+| Analyst Wallet | `0x103b2E12CDB4AaE9700b67f77c72394E26402d09` | [Transactions](https://www.okx.com/web3/explorer/xlayer/address/0x103b2E12CDB4AaE9700b67f77c72394E26402d09) |
+| Executor Wallet | `0xd934004742213b3263A9A66c6d9390215B7f95e6` | [Transactions](https://www.okx.com/web3/explorer/xlayer/address/0xd934004742213b3263A9A66c6d9390215B7f95e6) |
+| Treasury Wallet | `0x89583a5f27585309639d7Ed4ce30814d581F68Ed` | [Transactions](https://www.okx.com/web3/explorer/xlayer/address/0x89583a5f27585309639d7Ed4ce30814d581F68Ed) |
+| Deployer Wallet | `0x4aF5d30b53B20d68A90D3FCb5780D9d661493326` | [Transactions](https://www.okx.com/web3/explorer/xlayer/address/0x4aF5d30b53B20d68A90D3FCb5780D9d661493326) |
+| USDC (X Layer) | `0x74b7f16337b8972027f6196a17a631ac6de26d22` | [Token](https://www.okx.com/web3/explorer/xlayer/address/0x74b7f16337b8972027f6196a17a631ac6de26d22) |
 
 ### Transaction Log
 
@@ -450,7 +452,7 @@ agenthedge/
 │   │   ├── contracts/
 │   │   │   └── AgentRegistry.sol       # On-chain agent registry
 │   │   ├── test/
-│   │   │   └── AgentRegistry.test.ts   # 24 Hardhat tests
+│   │   │   └── AgentRegistry.test.ts   # 33 Hardhat tests
 │   │   ├── scripts/
 │   │   │   └── deploy.ts              # Deployment script
 │   │   └── hardhat.config.ts          # X Layer mainnet + testnet networks
@@ -615,6 +617,14 @@ Built by Cayvox Labs for the X Layer Onchain OS AI Hackathon.
 | Anıl Karaçay | Founder & Lead Developer — Architecture, smart contracts, agent pipeline, OnchainOS integration |
 | Sude Ceren Şahin | Lead Engineer — Agent implementation, testing, protocol research |
 | Yusuf Şimşek | Growth — Community, social media, partnerships, hackathon submissions |
+
+---
+
+## Links
+
+- **GitHub:** [github.com/anilkaracay/AgentHedge](https://github.com/anilkaracay/AgentHedge)
+- **Contract:** [X Layer Explorer](https://www.okx.com/web3/explorer/xlayer/address/0xB8406ad5A79721d8D411837b68dfc5E4FF1A41e4)
+- **Demo Video:** [YouTube](https://youtu.be/OrgI-qv6trQ)
 
 ---
 
