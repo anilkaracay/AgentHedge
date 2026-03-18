@@ -50,6 +50,10 @@ export interface TradeResult {
   timestamp: string;
 }
 
+const API_HOST = typeof window !== 'undefined' && window.location.hostname !== 'localhost'
+  ? `http://${window.location.hostname}:4005`
+  : API_HOST;
+
 export function useDashboardEvents() {
   const [events, setEvents] = useState<DashboardEvent[]>([]);
   const [portfolio, setPortfolio] = useState<PortfolioSnapshot | null>(null);
@@ -61,7 +65,7 @@ export function useDashboardEvents() {
   const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
-    const socket = io('http://localhost:4005', {
+    const socket = io(API_HOST, {
       transports: ['websocket', 'polling'],
     });
     socketRef.current = socket;
@@ -105,12 +109,12 @@ export function useDashboardEvents() {
 
   // Fetch initial demo mode state
   useEffect(() => {
-    fetch('http://localhost:4005/api/demo-mode').then(r => r.json()).then((d: any) => setDemoMode(d.demoMode)).catch(() => {});
+    fetch(`${API_HOST}/api/demo-mode`).then(r => r.json()).then((d: any) => setDemoMode(d.demoMode)).catch(() => {});
   }, []);
 
   const toggleDemoMode = () => {
     const newMode = !demoMode;
-    fetch('http://localhost:4005/api/demo-mode', {
+    fetch(`${API_HOST}/api/demo-mode`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ demoMode: newMode }),
