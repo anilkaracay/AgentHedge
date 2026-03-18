@@ -32,14 +32,11 @@ export default function PipelineViz({ events }: Props) {
     return { completed: done, activeIdx: active };
   }, [events]);
 
-  const allDone = activeIdx === -1;
-
   return (
     <div className="flex items-center justify-center py-2.5">
       {STEPS.map((step, i) => {
         const done = completed[i];
         const active = i === activeIdx;
-        const pending = !done && !active;
 
         // Line color: green if the node BEFORE this line is completed
         const lineGreen = i > 0 && completed[i - 1];

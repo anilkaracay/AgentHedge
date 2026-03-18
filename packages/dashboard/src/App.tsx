@@ -8,7 +8,7 @@ import ChainAttestations from './components/ChainAttestations';
 import PipelineViz from './components/PipelineViz';
 
 function App() {
-  const { events, portfolio, payments, trades, connected, pnlHistory, attestations, demoMode, toggleDemoMode } = useDashboardEvents();
+  const { events, portfolio, payments, trades, pnlHistory, attestations, demoMode, toggleDemoMode } = useDashboardEvents();
   const [uptime, setUptime] = useState(0);
 
   useEffect(() => {
