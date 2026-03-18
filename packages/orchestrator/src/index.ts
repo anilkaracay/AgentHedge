@@ -17,6 +17,13 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Serve dashboard at /dashboard (must be before landing catch-all)
+const dashboardPath = path.resolve(__dirname, '../../dashboard/dist');
+app.use('/dashboard', express.static(dashboardPath));
+app.get('/dashboard/*', (_req, res) => {
+  res.sendFile(path.join(dashboardPath, 'index.html'));
+});
+
 // Serve landing page at root
 const landingPath = path.resolve(__dirname, '../../landing');
 app.use(express.static(landingPath));

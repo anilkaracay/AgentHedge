@@ -51,8 +51,8 @@ export interface TradeResult {
 }
 
 const API_HOST = typeof window !== 'undefined' && window.location.hostname !== 'localhost'
-  ? `http://${window.location.hostname}:4005`
-  : API_HOST;
+  ? `${window.location.protocol}//${window.location.host}`
+  : 'http://localhost:4005';
 
 export function useDashboardEvents() {
   const [events, setEvents] = useState<DashboardEvent[]>([]);
