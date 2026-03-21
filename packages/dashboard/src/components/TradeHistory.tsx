@@ -4,9 +4,10 @@ import type { TradeResult, DashboardEvent } from '../hooks/useSocket';
 interface Props {
   trades: TradeResult[];
   events: DashboardEvent[];
+  animate?: boolean;
 }
 
-export default function TradeHistory({ trades, events }: Props) {
+export default function TradeHistory({ trades, events, animate }: Props) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const toggle = (id: string) => setExpanded(prev => prev === id ? null : id);
 
@@ -66,7 +67,7 @@ export default function TradeHistory({ trades, events }: Props) {
                 <div key={id}>
                   {/* Main trade row */}
                   <div
-                    className={`trade-row grid font-mono text-[11px] px-3 py-1.5 cursor-pointer border-b border-[rgba(255,255,255,0.03)] ${i % 2 === 1 ? 'bg-[rgba(255,255,255,0.01)]' : ''} ${isExpanded ? 'bg-[rgba(250,204,21,0.04)] border-l-2 border-l-[#FACC15]' : ''} ${i === 0 ? 'animate-slide-in' : ''}`}
+                    className={`trade-row grid font-mono text-[11px] px-3 py-1.5 cursor-pointer border-b border-[rgba(255,255,255,0.03)] ${i % 2 === 1 ? 'bg-[rgba(255,255,255,0.01)]' : ''} ${isExpanded ? 'bg-[rgba(250,204,21,0.04)] border-l-2 border-l-[#FACC15]' : ''} ${animate && i === 0 ? 'animate-slide-in' : ''}`}
                     style={{ gridTemplateColumns: '58px 72px 68px 72px 68px 68px 72px' }}
                     onClick={() => toggle(id)}
                   >

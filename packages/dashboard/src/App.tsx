@@ -8,7 +8,7 @@ import ChainAttestations from './components/ChainAttestations';
 import PipelineViz from './components/PipelineViz';
 
 function App() {
-  const { events, portfolio, payments, trades, pnlHistory, attestations, demoMode, toggleDemoMode } = useDashboardEvents();
+  const { events, portfolio, payments, trades, pnlHistory, attestations, demoMode, toggleDemoMode, initialSyncDone } = useDashboardEvents();
   const [uptime, setUptime] = useState(0);
 
   useEffect(() => {
@@ -83,10 +83,10 @@ function App() {
         {/* Center: Trades + Payments */}
         <div className="center-col flex flex-col min-w-0 overflow-hidden">
           <div className="flex-1 min-h-0 p-2">
-            <TradeHistory trades={trades} events={events} />
+            <TradeHistory trades={trades} events={events} animate={initialSyncDone} />
           </div>
           <div className="h-[180px] flex-shrink-0 p-2 pt-0">
-            <PaymentStream payments={payments} />
+            <PaymentStream payments={payments} animate={initialSyncDone} />
           </div>
         </div>
 
@@ -94,7 +94,7 @@ function App() {
         <div className="sidebar-right border-l border-[rgba(255,255,255,0.06)] overflow-y-auto p-2">
           <RiskDashboard portfolio={portfolio} pnlHistory={pnlHistory} />
           <div className="mt-1.5">
-            <ChainAttestations attestations={attestations} />
+            <ChainAttestations attestations={attestations} animate={initialSyncDone} />
           </div>
         </div>
       </div>

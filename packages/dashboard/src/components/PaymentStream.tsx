@@ -2,6 +2,7 @@ import type { X402PaymentEvent } from '../hooks/useSocket';
 
 interface Props {
   payments: (X402PaymentEvent & { timestamp: string })[];
+  animate?: boolean;
 }
 
 const AGENT_COLORS: Record<string, string> = {
@@ -11,7 +12,7 @@ const AGENT_COLORS: Record<string, string> = {
   treasury: '#4ade80',
 };
 
-export default function PaymentStream({ payments }: Props) {
+export default function PaymentStream({ payments, animate }: Props) {
   return (
     <div className="card flex flex-col h-full">
       <div className="px-3 py-2 border-b border-[rgba(255,255,255,0.06)] flex items-center justify-between">
@@ -27,7 +28,7 @@ export default function PaymentStream({ payments }: Props) {
           payments.map((p: any, i) => (
             <div
               key={`${p.timestamp}-${i}`}
-              className={`px-3 py-1.5 border-b border-[rgba(255,255,255,0.03)] font-mono text-[11px] flex items-center gap-2 ${i === 0 ? 'animate-payment-flash' : ''}`}
+              className={`px-3 py-1.5 border-b border-[rgba(255,255,255,0.03)] font-mono text-[11px] flex items-center gap-2 ${animate && i === 0 ? 'animate-payment-flash' : ''}`}
             >
               <span className="text-[#3f3f46] w-[52px] flex-shrink-0">
                 {new Date(p.timestamp).toLocaleTimeString('en-GB', { hour12: false })}

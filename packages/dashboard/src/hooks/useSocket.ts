@@ -62,6 +62,7 @@ export function useDashboardEvents() {
   const [connected, setConnected] = useState(false);
   const [pnlHistory, setPnlHistory] = useState<{ time: string; pnl: number }[]>([]);
   const [attestations, setAttestations] = useState<ChainAttestation[]>([]);
+  const [initialSyncDone, setInitialSyncDone] = useState(false);
   const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
@@ -73,6 +74,31 @@ export function useDashboardEvents() {
     socket.on('connect', () => setConnected(true));
     socket.on('disconnect', () => setConnected(false));
 
+    // Bulk snapshot on connect — no animations, just set state directly
+    socket.on('history_sync', (data: {
+      trades: TradeResult[];
+      payments: (X402PaymentEvent & { timestamp: string })[];
+      attestations: ChainAttestation[];
+      portfolio: PortfolioSnapshot | null;
+      cycleCount: number;
+      uptime: number;
+    }) => {
+      setTrades((data.trades ?? []).slice().reverse());
+      setPayments((data.payments ?? []).map(p => ({ ...p, timestamp: p.timestamp })).reverse());
+      setAttestations((data.attestations ?? []).slice().reverse());
+      if (data.portfolio) {
+        setPortfolio(data.portfolio);
+      }
+      // Build initial events list from synced data so cycle count etc. work
+      const syncEvents: DashboardEvent[] = [];
+      for (let i = 0; i < (data.cycleCount ?? 0); i++) {
+        syncEvents.push({ type: 'cycle_complete', data: {}, timestamp: new Date().toISOString() });
+      }
+      setEvents(syncEvents);
+      setInitialSyncDone(true);
+    });
+
+    // Live events after initial sync — prepend with animation
     socket.on('dashboard_event', (event: DashboardEvent) => {
       setEvents(prev => [event, ...prev].slice(0, 100));
 
@@ -121,5 +147,5 @@ export function useDashboardEvents() {
     }).then(() => setDemoMode(newMode)).catch(() => {});
   };
 
-  return { events, portfolio, payments, trades, connected, pnlHistory, attestations, demoMode, toggleDemoMode };
+  return { events, portfolio, payments, trades, connected, pnlHistory, attestations, demoMode, toggleDemoMode, initialSyncDone };
 }

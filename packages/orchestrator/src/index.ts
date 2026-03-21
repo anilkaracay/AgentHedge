@@ -38,40 +38,22 @@ const io = new Server(httpServer, {
 io.on('connection', (socket) => {
   logInfo('orchestrator', `Dashboard connected: ${socket.id}`);
 
-  // Send full session history on connect (survives F5)
   const history = getDemoHistory();
   const now = new Date().toISOString();
 
-  // Agent registrations
-  for (const agent of ['scout', 'analyst', 'executor', 'treasury']) {
-    socket.emit('dashboard_event', { type: 'agent_registered', data: { agentId: agent, role: agent }, timestamp: now });
-  }
+  // Send a single history_sync with only recent data (not full replay)
+  socket.emit('history_sync', {
+    trades: history.trades.slice(-20),
+    payments: history.payments.slice(-30),
+    attestations: history.attestations.slice(-10),
+    portfolio: liveState.treasury.portfolio > 0
+      ? { totalValueUSD: liveState.treasury.portfolio, tokenBalances: [], dailyPnL: liveState.treasury.dailyPnl, dailyPnLPercent: 0, circuitBreakerActive: false }
+      : null,
+    cycleCount: liveState.meta.cyclesCompleted,
+    uptime: Date.now() - startTimestamp,
+  });
 
-  // Replay all trades
-  for (const trade of history.trades) {
-    socket.emit('dashboard_event', { type: 'trade_executed', data: trade, timestamp: trade.timestamp });
-  }
-
-  // Replay all payments
-  for (const payment of history.payments) {
-    socket.emit('dashboard_event', { type: 'x402_payment', data: payment, timestamp: payment.timestamp });
-  }
-
-  // Replay all attestations
-  for (const att of history.attestations) {
-    socket.emit('dashboard_event', { type: 'chain_attestation', data: att, timestamp: att.timestamp });
-  }
-
-  // Send current portfolio
-  if (liveState.treasury.portfolio > 0) {
-    socket.emit('dashboard_event', {
-      type: 'portfolio_update',
-      data: { totalValueUSD: liveState.treasury.portfolio, tokenBalances: [], dailyPnL: liveState.treasury.dailyPnl, dailyPnLPercent: 0, circuitBreakerActive: false },
-      timestamp: now,
-    });
-  }
-
-  logInfo('orchestrator', `Synced ${history.trades.length} trades + ${history.payments.length} payments + ${history.attestations.length} attestations to dashboard`);
+  logInfo('orchestrator', `Synced snapshot to dashboard: ${Math.min(history.trades.length, 20)} trades, ${Math.min(history.payments.length, 30)} payments, ${Math.min(history.attestations.length, 10)} attestations (of ${history.trades.length}/${history.payments.length}/${history.attestations.length} total)`);
 
   socket.on('disconnect', () => {
     logInfo('orchestrator', `Dashboard disconnected: ${socket.id}`);

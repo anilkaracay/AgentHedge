@@ -12,7 +12,7 @@ function decisionColor(decision: string) {
   return '#3f3f46';
 }
 
-export default function ChainAttestations({ attestations }: { attestations: ChainAttestation[] }) {
+export default function ChainAttestations({ attestations, animate }: { attestations: ChainAttestation[]; animate?: boolean }) {
   return (
     <div className="card p-3">
       <div className="flex items-center justify-between mb-3 border-b border-[rgba(255,255,255,0.06)] pb-1.5">
@@ -37,7 +37,7 @@ export default function ChainAttestations({ attestations }: { attestations: Chai
             return (
               <div
                 key={att.txHash}
-                className={`flex items-center gap-2 font-mono text-[10px] py-0.5 ${i === 0 ? 'animate-slide-in' : ''}`}
+                className={`flex items-center gap-2 font-mono text-[10px] py-0.5 ${animate && i === 0 ? 'animate-slide-in' : ''}`}
               >
                 <span className="text-[#3f3f46] w-[50px] flex-shrink-0">{time}</span>
                 <span className="text-[#52525b] flex-shrink-0">#{att.cycleId}</span>
