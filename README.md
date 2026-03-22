@@ -5,6 +5,7 @@ Autonomous multi-agent CeDeFi arbitrage system with x402 inter-agent micropaymen
 ![X Layer Mainnet](https://img.shields.io/badge/X_Layer-Mainnet-00c853?style=flat-square)
 ![OnchainOS](https://img.shields.io/badge/OnchainOS-API_v6-1976d2?style=flat-square)
 ![x402 Protocol](https://img.shields.io/badge/x402-Protocol-1565c0?style=flat-square)
+![Agentic Wallet](https://img.shields.io/badge/Agentic_Wallet-TEE_Secured-FACC15?style=flat-square&logoColor=black)
 ![Solidity](https://img.shields.io/badge/Solidity-0.8.24-363636?style=flat-square)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.4-3178c6?style=flat-square)
 ![License](https://img.shields.io/badge/License-MIT-757575?style=flat-square)
@@ -19,7 +20,7 @@ AgentHedge is a four-agent arbitrage pipeline deployed on X Layer (Chain ID 196)
 
 Current arbitrage infrastructure is typically monolithic -- a single process handles price discovery, analysis, execution, and risk in one opaque loop. AgentHedge decomposes this into four independently replaceable, economically incentivized services. Any agent can be swapped without affecting the rest of the pipeline. Scout can be replaced with a better price oracle. Analyst can adopt a new model. The x402 payment protocol ensures that each agent is compensated for the value it provides, creating a self-sustaining service marketplace.
 
-The system is fully autonomous (zero human intervention per arbitrage cycle), x402-native (every inter-agent call carries a signed USDC payment), and OnchainOS-integrated (all trade routing, approvals, and execution go through the OKX OnchainOS DEX Aggregator API). AgentHedge is live on X Layer mainnet with 34+ verified transactions (including real USDC x402 payments and on-chain cycle attestations), 4 registered agents, and a real-time monitoring dashboard.
+The system is fully autonomous (zero human intervention per arbitrage cycle), x402-native (every inter-agent call carries a signed USDC payment), and OnchainOS-integrated (all trade routing, approvals, and execution go through the OKX OnchainOS DEX Aggregator API). AgentHedge is live on X Layer mainnet with 34+ verified transactions (including real USDC x402 payments and on-chain cycle attestations), 4 registered agents, and a real-time monitoring dashboard. The system supports OKX Agentic Wallet for TEE-secured agent key management with zero gas on X Layer.
 
 ---
 
