@@ -12,12 +12,12 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--bg:#09090b;--surface:#0f0f12;--border:#27272a;--border-hover:#10b981;--text:#fafafa;--text-secondary:#a1a1aa;--text-muted:#71717a;--accent:#10b981;--mono:'JetBrains Mono',monospace;--serif:'Instrument Serif',Georgia,serif;--sans:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif}
 html{scroll-behavior:smooth;font-size:16px}
-body{background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+body{background:var(--bg);background-image:radial-gradient(circle,rgba(255,255,255,.015) 1px,transparent 1px);background-size:32px 32px;color:var(--text);font-family:var(--sans);line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
 a{color:var(--text-secondary);text-decoration:none;transition:color .2s}
 a:hover{color:var(--text)}
 
 /* NAV */
-nav{position:sticky;top:0;z-index:100;background:rgba(9,9,11,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 2rem;height:56px;display:flex;align-items:center;justify-content:space-between}
+nav{position:sticky;top:0;z-index:100;background:rgba(9,9,11,.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.04);box-shadow:0 1px 0 0 rgba(255,255,255,.03);padding:0 2rem;height:56px;display:flex;align-items:center;justify-content:space-between}
 .nav-mark{font-family:var(--mono);font-weight:500;font-size:.95rem;color:var(--text);letter-spacing:-.02em}
 .nav-links{display:flex;gap:1.75rem;font-size:.875rem;font-family:var(--mono);font-weight:400;align-items:center}
 .nav-links a{color:var(--text-muted);transition:color .2s}
@@ -31,19 +31,23 @@ section{padding:7rem 0}
 .section-label{font-family:var(--mono);font-size:.75rem;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.75rem}
 .section-heading{font-family:var(--serif);font-size:2rem;font-weight:400;color:var(--text);margin-bottom:1.5rem;line-height:1.2}
 .section-sub{color:var(--text-secondary);max-width:580px;font-size:.95rem;line-height:1.7;margin-bottom:2.5rem}
-.border-top{border-top:1px solid var(--border)}
+.border-top{border-top:none;position:relative}
+.border-top::after{content:'';display:block;width:60%;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.08) 30%,rgba(255,255,255,.12) 50%,rgba(255,255,255,.08) 70%,transparent);position:absolute;top:0;left:20%}
 
 /* HERO */
-.hero{padding:7rem 0 5rem;text-align:left}
-.hero h1{font-family:var(--serif);font-size:clamp(2.2rem,5vw,3.4rem);font-weight:400;line-height:1.15;margin-bottom:1.25rem;color:var(--text)}
+.hero{padding:7rem 0 5rem;text-align:left;position:relative}
+.hero::before{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:800px;height:500px;background:radial-gradient(ellipse at center,rgba(250,204,21,.04) 0%,rgba(250,204,21,.01) 40%,transparent 70%);pointer-events:none}
+.hero h1{font-family:var(--serif);font-size:clamp(2.2rem,5vw,3.4rem);font-weight:400;line-height:1.15;margin-bottom:1.25rem;color:var(--text);position:relative}
 .hero h1 em{font-style:italic;color:var(--accent)}
-.hero-sub{color:var(--text-secondary);font-size:1.05rem;line-height:1.7;max-width:580px;margin-bottom:2.5rem}
+.hero-sub{color:var(--text-secondary);font-size:1.05rem;line-height:1.7;max-width:580px;margin-bottom:2.5rem;position:relative}
 
 /* TERMINAL */
-.terminal{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:1.25rem 1.5rem;font-family:var(--mono);font-size:.8rem;line-height:2;overflow-x:auto;margin-bottom:2.5rem;position:relative}
-.terminal-badge{position:absolute;top:.7rem;right:1rem;display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:.7rem;font-weight:600;color:var(--accent);letter-spacing:.1em}
-.terminal-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:livePulse 2s ease-in-out infinite}
-@keyframes livePulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(16,185,129,.3)}50%{opacity:.7;box-shadow:0 0 8px 2px rgba(16,185,129,.4)}}
+.terminal{background:var(--surface);border:1px solid rgba(250,204,21,.12);border-radius:4px;padding:1.25rem 1.5rem;font-family:var(--mono);font-size:.8rem;line-height:2;overflow-x:auto;margin-bottom:2.5rem;position:relative;box-shadow:inset 0 0 30px rgba(250,204,21,.02),0 0 40px rgba(250,204,21,.03)}
+.terminal::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.03) 2px,rgba(0,0,0,.03) 4px);pointer-events:none;border-radius:4px}
+.terminal-badge{position:absolute;top:.7rem;right:1rem;display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:.7rem;font-weight:600;color:#ef4444;letter-spacing:.1em}
+.terminal-badge::before{content:'';width:6px;height:6px;border-radius:50%;background:#ef4444;animation:livePulse 2s ease-in-out infinite}
+.terminal-dot{width:7px;height:7px;border-radius:50%;background:#ef4444;animation:livePulse 2s ease-in-out infinite}
+@keyframes livePulse{0%,100%{opacity:1;box-shadow:0 0 4px rgba(239,68,68,.4)}50%{opacity:.7;box-shadow:0 0 10px rgba(239,68,68,.7)}}
 .t-agent{color:var(--text-muted);display:inline-block;width:72px}
 .t-status{display:inline-block;width:88px}
 .t-status.active{color:var(--accent)}
@@ -62,8 +66,10 @@ section{padding:7rem 0}
 
 /* PIPELINE */
 .pipeline{display:flex;align-items:flex-start;gap:0;margin:2rem 0;overflow-x:auto;padding-bottom:1rem}
-.pipe-node{flex:1;min-width:180px;border:1px solid var(--border);padding:1.25rem;position:relative;transition:border-color .3s;border-radius:0}
+.pipe-node{flex:1;min-width:180px;border:1px solid var(--border);padding:1.25rem;position:relative;transition:border-color .3s;border-radius:0;overflow:hidden}
+.pipe-node::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,.1) 30%,rgba(255,255,255,.2) 50%,rgba(255,255,255,.1) 70%,transparent 100%);transition:background .3s ease;z-index:1}
 .pipe-node:hover{border-color:var(--border-hover)}
+.pipe-node:hover::before{background:linear-gradient(90deg,transparent 0%,rgba(250,204,21,.1) 30%,rgba(250,204,21,.25) 50%,rgba(250,204,21,.1) 70%,transparent 100%)}
 .pipe-node:first-child{border-radius:4px 0 0 4px}
 .pipe-node:last-child{border-radius:0 4px 4px 0}
 .pipe-name{font-family:var(--mono);font-weight:600;font-size:.85rem;margin-bottom:.35rem}
@@ -73,7 +79,7 @@ section{padding:7rem 0}
 .pipe-arrow-line{width:100%;height:2px;background:var(--border);position:relative}
 .pipe-arrow-line::after{content:'';position:absolute;right:-1px;top:-4px;border:5px solid transparent;border-left-color:var(--accent)}
 .pipe-arrow-amt{font-family:var(--mono);font-size:.65rem;color:var(--accent);margin-top:.4rem;white-space:nowrap;background:rgba(16,185,129,.08);padding:.1rem .45rem;border-radius:10px}
-.pipe-dot{position:absolute;width:6px;height:6px;border-radius:50%;background:var(--accent);top:50%;margin-top:-3px;left:0;animation:pipe-flow 3s ease-in-out infinite;opacity:0}
+.pipe-dot{position:absolute;width:6px;height:6px;border-radius:50%;background:var(--accent);top:50%;margin-top:-3px;left:0;animation:pipe-flow 3s ease-in-out infinite;opacity:0;box-shadow:0 0 8px rgba(16,185,129,.6)}
 .pipe-arrow:nth-child(2) .pipe-dot{animation-delay:0s}
 .pipe-arrow:nth-child(4) .pipe-dot{animation-delay:1s}
 .pipe-arrow:nth-child(6) .pipe-dot{animation-delay:2s}
@@ -82,8 +88,10 @@ section{padding:7rem 0}
 
 /* AGENT CARDS */
 .agent-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:4px;overflow:hidden}
-.agent-card{background:var(--bg);padding:1.75rem 1.5rem;transition:background .2s}
+.agent-card{background:var(--bg);padding:1.75rem 1.5rem;transition:background .2s;position:relative;overflow:hidden}
+.agent-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,.08) 30%,rgba(255,255,255,.15) 50%,rgba(255,255,255,.08) 70%,transparent 100%);transition:background .3s ease}
 .agent-card:hover{background:var(--surface)}
+.agent-card:hover::before{background:linear-gradient(90deg,transparent 0%,rgba(250,204,21,.1) 30%,rgba(250,204,21,.2) 50%,rgba(250,204,21,.1) 70%,transparent 100%)}
 .agent-name{font-family:var(--mono);font-weight:600;font-size:.85rem;margin-bottom:.5rem}
 .agent-role{font-size:.82rem;color:var(--text-secondary);line-height:1.5;margin-bottom:1rem}
 .agent-meta{font-family:var(--mono);font-size:.7rem;color:var(--text-muted);line-height:2}
@@ -92,8 +100,8 @@ section{padding:7rem 0}
 /* METRICS */
 .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:4px;overflow:hidden;margin:2rem 0}
 .metric{background:var(--bg);padding:1.5rem;text-align:center}
-.metric-val{font-family:var(--mono);font-size:1.75rem;font-weight:600;color:var(--text);margin-bottom:.35rem}
-.metric-val.accent{color:var(--accent)}
+.metric-val{font-family:var(--mono);font-size:1.75rem;font-weight:600;color:var(--text);margin-bottom:.35rem;text-shadow:0 0 40px rgba(250,204,21,.15)}
+.metric-val.accent{color:var(--accent);text-shadow:0 0 40px rgba(16,185,129,.2)}
 .metric-label{font-size:.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em}
 
 /* CONTRACT */
@@ -118,15 +126,28 @@ section{padding:7rem 0}
 .way-code{font-family:var(--mono);font-size:.72rem;color:var(--text-secondary);line-height:1.8;background:#111115;padding:.75rem 1rem;border-radius:3px;border:1px solid rgba(255,255,255,.04);margin-top:.75rem}
 
 /* FOOTER */
-footer{border-top:1px solid var(--border);padding:2.5rem 0;text-align:center}
+footer{border-top:1px solid transparent;padding:2.5rem 0;text-align:center;background-image:linear-gradient(var(--bg),var(--bg)),linear-gradient(90deg,transparent,rgba(255,255,255,.05) 50%,transparent);background-origin:border-box;background-clip:padding-box,border-box}
 footer p{font-size:.8rem;color:var(--text-muted);margin-bottom:.75rem}
 footer .footer-links{display:flex;justify-content:center;gap:1.5rem;font-family:var(--mono);font-size:.75rem}
 footer .footer-links a{color:var(--text-muted)}
 footer .footer-links a:hover{color:var(--text)}
 
 /* FADE IN */
-.fade-in{opacity:0;transform:translateY(12px);transition:opacity .5s ease,transform .5s ease}
+.fade-in{opacity:0;transform:translateY(20px);transition:opacity .6s ease,transform .6s ease}
 .fade-in.visible{opacity:1;transform:translateY(0)}
+section>.fade-in~.fade-in{transition-delay:.12s}
+section>.fade-in~.fade-in~.fade-in{transition-delay:.2s}
+
+/* ROADMAP GLOW */
+.rm-active{box-shadow:0 0 8px rgba(34,197,94,.3),0 0 20px rgba(34,197,94,.1);animation:dotPulse 3s ease-in-out infinite}
+.rm-highlight{box-shadow:0 0 8px rgba(250,204,21,.3)}
+@keyframes dotPulse{0%,100%{box-shadow:0 0 8px rgba(34,197,94,.3)}50%{box-shadow:0 0 16px rgba(34,197,94,.5),0 0 30px rgba(34,197,94,.15)}}
+
+/* WAY CARDS */
+.way-card{position:relative;overflow:hidden;transition:background .2s}
+.way-card:hover{background:var(--surface)!important}
+.way-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,.08) 30%,rgba(255,255,255,.15) 50%,rgba(255,255,255,.08) 70%,transparent 100%);transition:background .3s ease}
+.way-card:hover::before{background:linear-gradient(90deg,transparent 0%,rgba(250,204,21,.1) 30%,rgba(250,204,21,.2) 50%,rgba(250,204,21,.1) 70%,transparent 100%)}
 
 /* RESPONSIVE */
 @media(max-width:1024px){
@@ -310,12 +331,12 @@ footer .footer-links a:hover{color:var(--text)}
       <h2 class="section-heading">Two Ways to Use AgentHedge</h2>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);border:1px solid var(--border);border-radius:4px;overflow:hidden" class="fade-in">
-      <div style="background:var(--bg);padding:1.75rem 1.5rem">
+      <div class="way-card" style="background:var(--bg);padding:1.75rem 1.5rem">
         <div style="font-family:var(--mono);font-size:.85rem;font-weight:600;margin-bottom:.75rem">Run the Swarm</div>
         <p style="font-size:.82rem;color:var(--text-secondary);line-height:1.6;margin-bottom:0">Deploy on your infrastructure. Full control over capital and strategy. Real-time dashboard monitoring.</p>
         <div class="way-code">npm start<br>open http://localhost:4005</div>
       </div>
-      <div style="background:var(--bg);padding:1.75rem 1.5rem">
+      <div class="way-card" style="background:var(--bg);padding:1.75rem 1.5rem">
         <div style="font-family:var(--mono);font-size:.85rem;font-weight:600;margin-bottom:.75rem">Consume the Intelligence</div>
         <p style="font-size:.82rem;color:var(--text-secondary);line-height:1.6;margin-bottom:0">No infrastructure needed. Pay per request via x402. Multi-venue price data and cost analysis.</p>
         <div class="way-code">GET /api/opportunity-signal<br>0.02 USDC per request (x402)</div>
@@ -331,7 +352,7 @@ footer .footer-links a:hover{color:var(--text)}
     </div>
     <div class="fade-in" style="position:relative;padding-left:24px;border-left:1px solid rgba(255,255,255,0.08)">
       <div style="margin-bottom:2.5rem;position:relative">
-        <div style="position:absolute;left:-29px;top:2px;width:9px;height:9px;border-radius:50%;background:#22c55e"></div>
+        <div class="rm-active" style="position:absolute;left:-29px;top:2px;width:9px;height:9px;border-radius:50%;background:#22c55e"></div>
         <div style="font-family:var(--mono);font-size:.7rem;color:#22c55e;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.25rem">Phase 1 &mdash; Live</div>
         <div style="font-family:var(--serif);font-size:1.15rem;color:var(--text);margin-bottom:.35rem">Arbitrage Engine</div>
         <div style="font-size:.82rem;color:var(--text-secondary);line-height:1.6">4-agent CeDeFi pipeline with real x402 USDC payments, on-chain attestations, 34+ mainnet transactions. Live on X Layer.</div>
@@ -349,7 +370,7 @@ footer .footer-links a:hover{color:var(--text)}
         <div style="font-size:.82rem;color:var(--text-secondary);line-height:1.6">Cross-chain DEX scanning via OnchainOS &mdash; X Layer, Ethereum, Arbitrum, Base. Bridge-aware cost calculator.</div>
       </div>
       <div style="margin-bottom:2.5rem;position:relative">
-        <div style="position:absolute;left:-29px;top:2px;width:9px;height:9px;border-radius:50%;background:#FACC15"></div>
+        <div class="rm-highlight" style="position:absolute;left:-29px;top:2px;width:9px;height:9px;border-radius:50%;background:#FACC15"></div>
         <div style="font-family:var(--mono);font-size:.7rem;color:#FACC15;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.25rem">Phase 4 &mdash; Q4 2026</div>
         <div style="font-family:var(--serif);font-size:1.15rem;color:var(--text);margin-bottom:.35rem">Managed Vault Protocol</div>
         <div style="font-size:.82rem;color:var(--text-secondary);line-height:1.6">ERC-4626 vault on X Layer &mdash; deposit USDC, earn automated arbitrage yield. No lock-up, fully transparent, on-chain auditable.</div>
@@ -554,7 +575,7 @@ footer .footer-links a:hover{color:var(--text)}
 // Fade-in on scroll
 var observer = new IntersectionObserver(function(entries) {
   entries.forEach(function(e) { if (e.isIntersecting) { e.target.classList.add('visible'); observer.unobserve(e.target); }});
-}, { threshold: 0.1 });
+}, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
 document.querySelectorAll('.fade-in').forEach(function(el) { observer.observe(el); });
 
 // Smooth value update
