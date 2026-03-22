@@ -188,7 +188,7 @@ The x402 model also enables agent replaceability. If a better Scout agent appear
 
 ## OnchainOS Integration
 
-### 5 Modules, 10+ Endpoints
+### 6 Modules, 10+ Endpoints
 
 | Module | Endpoint | Method | Agent | Purpose |
 |--------|----------|--------|-------|---------|
@@ -202,6 +202,7 @@ The x402 model also enables agent replaceability. If a better Scout agent appear
 | Balance | `/api/v6/dex/balance/all-token-balances-by-address` | GET | Treasury | Token balances with metadata |
 | Gateway | `/api/v6/dex/pre-transaction/gas-price` | GET | Executor | Gas price estimation |
 | Portfolio | `/api/v6/dex/market/portfolio/overview` | GET | Treasury | Wallet PnL analytics |
+| Wallet (Agentic) | TEE-secured signing | — | All agents | Optional: TEE key management, zero gas, risk detection |
 
 ### Authentication
 
@@ -429,6 +430,37 @@ npm test                              # 33 smart contract tests
 npx tsx scripts/testnetDryRun.ts      # 17-point system dry run
 npx tsx scripts/testRefactored.ts     # 12-point live API test
 ```
+
+---
+
+## Wallet Providers
+
+AgentHedge supports two wallet configurations:
+
+### Standard (Default)
+Uses ethers.js with private keys stored in `.env`. Suitable for development, testing, and self-hosted deployments.
+```env
+WALLET_PROVIDER=ethers
+SCOUT_PK=0x...
+ANALYST_PK=0x...
+EXECUTOR_PK=0x...
+TREASURY_PK=0x...
+```
+
+### OKX Agentic Wallet
+Uses OKX's TEE-secured wallet infrastructure. Private keys are generated and stored in a Trusted Execution Environment — inaccessible to anyone, including OKX. Provides zero gas on X Layer and built-in risk detection.
+```env
+WALLET_PROVIDER=agentic
+AGENTIC_WALLET_TOKEN=your_session_token
+```
+
+Features of Agentic Wallet:
+- **TEE Security** — Private keys never leave the secure enclave
+- **Zero Gas** — All X Layer operations are gas-free
+- **Risk Detection** — Automatic malicious transaction detection
+- **Multi-Wallet** — Up to 50 sub-wallets per agent for parallel operations
+
+See [docs/AGENTIC_WALLET.md](docs/AGENTIC_WALLET.md) and [OKX Agentic Wallet Docs](https://web3.okx.com/onchainos/dev-docs/wallet/agentic-wallet) for setup instructions.
 
 ---
 

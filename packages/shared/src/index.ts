@@ -48,3 +48,5 @@ export { executeX402Payment, resetNonces, getAgentUSDCBalance, logAllAgentBalanc
 export type { X402PaymentResult } from './x402Real.js';
 export { executeFullPaymentCycle, executeMonitorPaymentCycle } from './x402PaymentFlow.js';
 export type { AgentKeys, AgentAddresses, PaymentFlowResult } from './x402PaymentFlow.js';
+export { createWalletProvider, AgenticWalletProvider, EthersWalletProvider } from './walletProviders/index.js';
+export type { WalletProvider, WalletProviderType, AgenticWalletConfig } from './walletProviders/index.js';
